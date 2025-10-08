@@ -1214,12 +1214,22 @@ class FitPrint {
                 if (imgData.rotated) {
                     canvas.width = img.height;
                     canvas.height = img.width;
+                    
+                    // Fill with white background before drawing the image
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
                     ctx.translate(canvas.width / 2, canvas.height / 2);
                     ctx.rotate(Math.PI / 2);
                     ctx.drawImage(img, -img.width / 2, -img.height / 2);
                 } else {
                     canvas.width = img.width;
                     canvas.height = img.height;
+                    
+                    // Fill with white background before drawing the image
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
                     ctx.drawImage(img, 0, 0);
                 }
                 
