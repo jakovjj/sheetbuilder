@@ -1146,10 +1146,6 @@ class FitPrint {
                     <div class="stat-value">${totalPages}</div>
                     <div class="stat-label">Pages Required</div>
                 </div>
-                <div class="stat-item">
-                    <div class="stat-value">${imagesPerPage}</div>
-                    <div class="stat-label">Avg Images/Page</div>
-                </div>
             </div>
         `;
     }
