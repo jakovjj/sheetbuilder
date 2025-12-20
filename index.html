@@ -9,55 +9,35 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
     <link rel="manifest" href="site.webmanifest">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
+    <header class="site-header">
+        <div class="container">
             <div class="header-content">
-                <div class="logo-section">
-                    <img src="logo.png" alt="FitPrint Logo" class="header-logo" onerror="this.style.display='none'">
-                </div>
-                <div class="nav-controls">
-                    <button id="navToggle" class="nav-toggle" title="Navigation">
-                        <span class="nav-icon">☰</span>
-                    </button>
-                    <button id="themeToggle" class="theme-btn" title="Toggle dark mode">
-                        <span class="theme-icon">🌙</span>
-                    </button>
-                </div>
                 <div class="title-section">
-                    <h1>FitPrint</h1>
-                    <p>Smart image layout for optimal printing</p>
+                    <div class="title-row">
+                        <span class="title-logo-bubble" aria-hidden="true">
+                            <img src="logo.png" alt="FitPrint Logo" class="header-logo title-logo" onerror="this.style.display='none'">
+                        </span>
+                        <h1>Fitprint</h1>
+                    </div>
+                    <p>Free smart image layout for optimal printing (gang sheets, DTF, and more)</p>
                 </div>
             </div>
-        </header>
+        </div>
+    </header>
 
-        <!-- Navigation Sidebar -->
-        <nav id="sidebar" class="sidebar">
-            <div class="sidebar-content">
-                <h3>Navigation</h3>
-                <ul class="nav-list">
-                    <li><a href="#upload" class="nav-link" data-section="upload-section">📁 Upload Images</a></li>
-                    <li><a href="#images" class="nav-link" data-section="images-section">🖼️ Image Configuration</a></li>
-                    <li><a href="#settings" class="nav-link" data-section="settings-section">⚙️ Print Settings</a></li>
-                    <li><a href="#actions" class="nav-link" data-section="actions-section">🎯 Generate Layout</a></li>
-                    <li><a href="#preview" class="nav-link" data-section="preview-section">👁️ Layout Preview</a></li>
-                </ul>
-            </div>
-        </nav>
-
-        <!-- Sidebar Overlay for mobile -->
-        <div id="sidebarOverlay" class="sidebar-overlay"></div>
-
+    <div class="container">
         <main>
             <section id="upload" class="upload-section">
-                <h2>📁 Upload Images</h2>
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-folder-open"></i></span>Upload Images</h2>
                 <div class="file-upload">
                     <input type="file" id="imageInput" multiple accept="image/*">
                     <label for="imageInput" class="upload-btn">
-                        <span class="upload-icon">📎</span>
+                        <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
                         Choose Images
                     </label>
                     <div class="upload-info">
@@ -68,14 +48,14 @@
             </section>
 
             <section id="images" class="images-section">
-                <h2>🖼️ Image Configuration</h2>
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-images"></i></span>Image Configuration</h2>
                 
                 <!-- Bulk Edit Section -->
                 <div class="bulk-edit-section">
                     <h3 onclick="fitPrint.toggleBulkEdit()" class="bulk-edit-header">
-                        📦 Bulk Edit Selected Images<span id="bulkToggleIcon" class="toggle-icon"></span>
+                        <span class="section-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked"></i></span>Bulk Edit Selected Images<span id="bulkToggleIcon" class="toggle-icon collapsed"></span>
                     </h3>
-                    <div class="bulk-controls" id="bulkControls">
+                    <div class="bulk-controls collapsed" id="bulkControls">
                         <div>
                             <button id="selectAll" class="bulk-btn">Select All</button>
                             <button id="selectNone" class="bulk-btn">Select None</button>
@@ -86,7 +66,6 @@
                             <div class="bulk-input-group">
                                 <label>Width (mm):</label>
                                 <input type="number" id="bulkWidth" min="1" step="0.1" placeholder="Width">
-                                <button id="lockRatio" class="ratio-lock-btn active" title="Lock aspect ratio">🔒</button>
                             </div>
                             <div class="bulk-input-group">
                                 <label>Height (mm):</label>
@@ -107,15 +86,15 @@
                 <!-- Quick Selection Controls (shown when images exist) -->
                 <div id="quickSelectionControls" class="quick-selection-controls hidden">
                     <div class="quick-selection-content">
-                        <span class="quick-selection-icon">⚡</span>
+                        <span class="quick-selection-icon" aria-hidden="true"><i class="fa-solid fa-bolt"></i></span>
                         <span class="quick-selection-label">Quick Actions:</span>
                         <div class="quick-selection-buttons">
                             <button id="quickSelectAll" class="quick-select-btn select-all">
-                                <span class="btn-icon">☑️</span>
+                                <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-square-check"></i></span>
                                 <span>Select All</span>
                             </button>
                             <button id="quickSelectNone" class="quick-select-btn select-none">
-                                <span class="btn-icon">☐</span>
+                                <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-square"></i></span>
                                 <span>Select None</span>
                             </button>
                         </div>
@@ -124,7 +103,7 @@
             </section>
 
             <section id="settings" class="settings-section">
-                <h2>⚙️ Print Settings</h2>
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-gear"></i></span>Print Settings</h2>
                 <div class="settings-grid">
                     <div class="setting-group">
                         <label for="paperSize">Paper Size:</label>
@@ -139,14 +118,6 @@
                             <option value="photo4x6">Photo 4×6 (102×152mm)</option>
                             <option value="photo5x7">Photo 5×7 (127×178mm)</option>
                             <option value="photo8x10">Photo 8×10 (203×254mm)</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
-                        <label for="paperOrientation">Orientation:</label>
-                        <select id="paperOrientation">
-                            <option value="portrait">Portrait</option>
-                            <option value="landscape">Landscape</option>
-                            <option value="auto">Auto (Best Fit)</option>
                         </select>
                     </div>
                     <div class="setting-group">
@@ -167,41 +138,22 @@
                         <small>Space between images</small>
                     </div>
                     <div class="setting-group">
-                        <label for="packingStrategy">Packing Strategy:</label>
-                        <select id="packingStrategy">
-                            <option value="efficient">Efficient (Minimize pages)</option>
-                            <option value="balanced">Balanced (Good fit)</option>
-                            <option value="loose">Loose (More spacing)</option>
-                        </select>
-                    </div>
-                    <div class="setting-group">
                         <label for="rotateImages">Allow Rotation:</label>
                         <div class="checkbox-group">
                             <input type="checkbox" id="rotateImages" checked>
                             <label for="rotateImages" class="checkbox-label">Rotate images for better fit</label>
                         </div>
                     </div>
-                    <div class="setting-group">
-                        <label for="imageQuality">Export Quality:</label>
-                        <select id="imageQuality">
-                            <option value="1.0">High Quality (No Compression)</option>
-                            <option value="0.9" selected>Very Good (90%)</option>
-                            <option value="0.8">Good (80%)</option>
-                            <option value="0.7">Medium (70%)</option>
-                            <option value="0.5">Low (50%)</option>
-                        </select>
-                        <small>Higher quality = larger file size</small>
-                    </div>
                 </div>
             </section>
 
             <section id="actions" class="actions-section">
                 <button id="generateLayout" class="action-btn primary">
-                    <span class="btn-icon">🎯</span>
+                    <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-bullseye"></i></span>
                     Generate Layout
                 </button>
                 <button id="exportPDF" class="action-btn secondary">
-                    <span class="btn-icon">📄</span>
+                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
                     Export to PDF
                 </button>
             </section>
@@ -216,7 +168,7 @@
             </div>
 
             <section id="preview" class="preview-section">
-                <h2>👁️ Layout Preview</h2>
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-eye"></i></span>Layout Preview</h2>
                 <div id="layoutPreview" class="layout-preview"></div>
                 <div id="layoutStats" class="layout-stats"></div>
             </section>
@@ -233,7 +185,7 @@
                         <input type="hidden" name="currency_code" value="USD" />
                         <input type="hidden" name="item_name" value="Buy me a coffee" />
                         <button type="submit" class="paypal-btn" title="Buy me a coffee">
-                            ☕ Buy me a coffee
+                            <span class="section-icon" aria-hidden="true"><i class="fa-solid fa-mug-hot"></i></span>Buy me a coffee
                         </button>
                     </form>
                 </div>

@@ -6,15 +6,154 @@ class FitPrint {
         this.lastSelectedId = null;
         this.isRatioLocked = true;
         this.bulkAspectRatio = null;
+        this.lastPreviewParams = null;
+        this._previewRerenderTimer = null;
         this.initializeEventListeners();
-        this.initializeTheme();
+    }
+
+    async createPreviewDataUrl(file, options = {}) {
+        const {
+            maxDimension = 360,
+            quality = 0.55,
+            mimeType = 'image/jpeg'
+        } = options;
+
+        // If the browser doesn't support createImageBitmap, fall back to original.
+        if (!('createImageBitmap' in window)) {
+            return null;
+        }
+
+        try {
+            const bitmap = await createImageBitmap(file);
+            const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+            const width = Math.max(1, Math.round(bitmap.width * scale));
+            const height = Math.max(1, Math.round(bitmap.height * scale));
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d', { alpha: false });
+            if (!ctx) return null;
+
+            // JPEG doesn't support transparency; draw onto a white background
+            // so transparent pixels don't become black in previews.
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, width, height);
+            ctx.drawImage(bitmap, 0, 0, width, height);
+            return canvas.toDataURL(mimeType, quality);
+        } catch {
+            return null;
+        }
+    }
+
+    getPreviewSrcForPlacedImage(placedImage) {
+        if (placedImage.previewDataUrl) return placedImage.previewDataUrl;
+        if (placedImage.originalId) {
+            const original = this.images.find(img => img.id === placedImage.originalId);
+            if (original?.previewDataUrl) return original.previewDataUrl;
+            if (original?.dataUrl) return original.dataUrl;
+        }
+        return placedImage.dataUrl;
+    }
+
+    scheduleLayoutPreviewRerender() {
+        if (!this.lastPreviewParams || this.layout.length === 0) return;
+        if (this._previewRerenderTimer) return;
+
+        this._previewRerenderTimer = window.setTimeout(() => {
+            this._previewRerenderTimer = null;
+            const { paperWidth, paperHeight, outerMargin } = this.lastPreviewParams;
+            this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
+        }, 120);
+    }
+
+    drawImageContain(ctx, img, dx, dy, dw, dh) {
+        const scale = Math.min(dw / img.width, dh / img.height);
+        const drawW = img.width * scale;
+        const drawH = img.height * scale;
+        const x = dx + (dw - drawW) / 2;
+        const y = dy + (dh - drawH) / 2;
+        ctx.drawImage(img, x, y, drawW, drawH);
+    }
+
+    async drawPagePreviewToCanvas(canvas, page, paperWidth, paperHeight, outerMargin, scale) {
+        const dpr = window.devicePixelRatio || 1;
+        const cssWidth = canvas.clientWidth;
+        const cssHeight = canvas.clientHeight;
+
+        canvas.width = Math.max(1, Math.round(cssWidth * dpr));
+        canvas.height = Math.max(1, Math.round(cssHeight * dpr));
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+        // Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, cssWidth, cssHeight);
+
+        // Optional outline of full page and printable area
+        ctx.strokeStyle = 'rgba(220, 38, 38, 0.35)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(0.5, 0.5, cssWidth - 1, cssHeight - 1);
+
+        const printableX = outerMargin * scale;
+        const printableY = outerMargin * scale;
+        const printableW = (paperWidth - 2 * outerMargin) * scale;
+        const printableH = (paperHeight - 2 * outerMargin) * scale;
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.setLineDash([4, 3]);
+        ctx.strokeRect(printableX + 0.5, printableY + 0.5, printableW - 1, printableH - 1);
+        ctx.setLineDash([]);
+
+        for (const placed of page.images) {
+            const x = (outerMargin + placed.x) * scale;
+            const y = (outerMargin + placed.y) * scale;
+            const w = placed.width * scale;
+            const h = placed.height * scale;
+
+            // Box outline
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.7)';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
+
+            const src = this.getPreviewSrcForPlacedImage(placed);
+            if (!src) continue;
+
+            const img = new Image();
+            img.decoding = 'async';
+            img.src = src;
+
+            try {
+                if (img.decode) {
+                    await img.decode();
+                } else {
+                    await new Promise((resolve, reject) => {
+                        img.onload = resolve;
+                        img.onerror = reject;
+                    });
+                }
+            } catch {
+                continue;
+            }
+
+            if (placed.rotated) {
+                ctx.save();
+                ctx.translate(x + w / 2, y + h / 2);
+                ctx.rotate(Math.PI / 2);
+                // After 90° rotation, the available box dimensions swap.
+                this.drawImageContain(ctx, img, -h / 2, -w / 2, h, w);
+                ctx.restore();
+            } else {
+                this.drawImageContain(ctx, img, x, y, w, h);
+            }
+        }
     }
 
     initializeEventListeners() {
         const imageInput = document.getElementById('imageInput');
         const generateBtn = document.getElementById('generateLayout');
         const exportBtn = document.getElementById('exportPDF');
-        const themeToggle = document.getElementById('themeToggle');
         const paperSize = document.getElementById('paperSize');
         
         // Paper setting inputs for real-time validation
@@ -41,7 +180,6 @@ class FitPrint {
         imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
         generateBtn.addEventListener('click', () => this.generateLayout());
         exportBtn.addEventListener('click', () => this.exportToPDF());
-        themeToggle.addEventListener('click', () => this.toggleTheme());
         paperSize.addEventListener('change', (e) => this.handlePaperSizeChange(e));
         
         // Bulk edit event listeners
@@ -58,25 +196,6 @@ class FitPrint {
         // Bulk input listeners for real-time ratio locking
         if (bulkWidth) bulkWidth.addEventListener('input', (e) => this.handleBulkWidthChange(e));
         if (bulkHeight) bulkHeight.addEventListener('input', (e) => this.handleBulkHeightChange(e));
-        
-        // Navigation event listeners
-        const navToggle = document.getElementById('navToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-        const navLinks = document.querySelectorAll('.nav-link');
-        
-        if (navToggle) navToggle.addEventListener('click', () => this.toggleSidebar());
-        if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => this.closeSidebar());
-        
-        // Navigation link event listeners
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const sectionId = link.getAttribute('data-section');
-                this.navigateToSection(sectionId);
-                this.closeSidebar(); // Close sidebar on mobile after navigation
-            });
-        });
         
         // Drag and drop functionality
         const fileUpload = document.querySelector('.file-upload');
@@ -100,27 +219,6 @@ class FitPrint {
             this.checkForCustomSize();
         });
         outerMargin.addEventListener('input', () => this.validateAllImages());
-    }
-
-    initializeTheme() {
-        const savedTheme = localStorage.getItem('fitprint-theme') || 'light';
-        this.setTheme(savedTheme);
-    }
-
-    toggleTheme() {
-        const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-        this.setTheme(newTheme);
-    }
-
-    setTheme(theme) {
-        document.documentElement.setAttribute('data-theme', theme);
-        localStorage.setItem('fitprint-theme', theme);
-        
-        const themeIcon = document.querySelector('.theme-icon');
-        if (themeIcon) {
-            themeIcon.textContent = theme === 'light' ? '🌙' : '☀️';
-        }
     }
 
     handlePaperSizeChange(event) {
@@ -294,7 +392,7 @@ class FitPrint {
                 config.classList.add('oversized');
                 const warning = document.createElement('div');
                 warning.className = 'size-warning';
-                warning.innerHTML = `⚠️ Too large for paper! Max: ${Math.max(printableWidth, printableHeight).toFixed(1)}×${Math.min(printableWidth, printableHeight).toFixed(1)}mm`;
+                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${Math.max(printableWidth, printableHeight).toFixed(1)}×${Math.min(printableWidth, printableHeight).toFixed(1)}mm`;
                 config.appendChild(warning);
             }
         } else {
@@ -443,14 +541,15 @@ class FitPrint {
     toggleRatioLock() {
         this.isRatioLocked = !this.isRatioLocked;
         const lockBtn = document.getElementById('lockRatio');
+        if (!lockBtn) return;
         
         if (this.isRatioLocked) {
             lockBtn.classList.add('active');
-            lockBtn.textContent = '🔒';
+            lockBtn.innerHTML = '<i class="fa-solid fa-lock" aria-hidden="true"></i>';
             lockBtn.title = 'Unlock aspect ratio';
         } else {
             lockBtn.classList.remove('active');
-            lockBtn.textContent = '🔓';
+            lockBtn.innerHTML = '<i class="fa-solid fa-lock-open" aria-hidden="true"></i>';
             lockBtn.title = 'Lock aspect ratio';
         }
     }
@@ -594,58 +693,6 @@ class FitPrint {
         document.addEventListener('keydown', handleKeydown);
     }
 
-    // Navigation Methods
-    toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        if (sidebar.classList.contains('open')) {
-            this.closeSidebar();
-        } else {
-            this.openSidebar();
-        }
-    }
-
-    openSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        sidebar.classList.add('open');
-        overlay.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    }
-
-    closeSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        sidebar.classList.remove('open');
-        overlay.classList.remove('active');
-        document.body.style.overflow = ''; // Restore scrolling
-    }
-
-    navigateToSection(sectionId) {
-        // Remove active class from all nav links
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        // Add active class to clicked link
-        const activeLink = document.querySelector(`[data-section="${sectionId}"]`);
-        if (activeLink) {
-            activeLink.classList.add('active');
-        }
-        
-        // Scroll to section
-        const section = document.getElementById(sectionId.replace('-section', ''));
-        if (section) {
-            section.scrollIntoView({ 
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    }
-
     // Drag and Drop Methods
     handleDragOver(e) {
         e.preventDefault();
@@ -714,6 +761,7 @@ class FitPrint {
                         id: Date.now() + index + Math.random() * 1000,
                         file: file,
                         dataUrl: e.target.result,
+                        previewDataUrl: null,
                         width: defaultWidth,
                         height: defaultHeight,
                         copies: 1,
@@ -725,6 +773,14 @@ class FitPrint {
 
                     this.images.push(imageData);
                     this.renderImageConfig(imageData);
+
+                    // Generate a lightweight preview in the background for layout preview.
+                    this.createPreviewDataUrl(file).then((previewDataUrl) => {
+                        if (previewDataUrl) {
+                            imageData.previewDataUrl = previewDataUrl;
+                            this.scheduleLayoutPreviewRerender();
+                        }
+                    });
                 };
                 img.src = e.target.result;
             };
@@ -770,6 +826,7 @@ class FitPrint {
         this.layout = this.packImages(allImages, printableWidth, printableHeight, innerMargin);
         
         this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
+        this.lastPreviewParams = { paperWidth, paperHeight, outerMargin };
         this.updateLayoutStats();
         
         document.getElementById('exportPDF').disabled = false;
@@ -795,7 +852,7 @@ class FitPrint {
     }
 
     showOversizedWarning(oversizedImages, printableWidth, printableHeight) {
-        let warningMessage = `⚠️ WARNING: The following images are too large to fit on the paper:\n\n`;
+        let warningMessage = `WARNING: The following images are too large to fit on the paper:\n\n`;
         warningMessage += `Printable area: ${printableWidth.toFixed(1)}mm × ${printableHeight.toFixed(1)}mm\n\n`;
         
         oversizedImages.forEach(img => {
@@ -823,7 +880,7 @@ class FitPrint {
                 
                 const warning = document.createElement('div');
                 warning.className = 'size-warning';
-                warning.innerHTML = `⚠️ Too large for paper! Max: ${img.maxWidth.toFixed(1)}×${img.maxHeight.toFixed(1)}mm`;
+                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${img.maxWidth.toFixed(1)}×${img.maxHeight.toFixed(1)}mm`;
                 config.appendChild(warning);
             }
         });
@@ -1115,18 +1172,16 @@ class FitPrint {
 
             const pageContent = pageDiv.querySelector('.page-content');
 
-            page.images.forEach(img => {
-                const imgDiv = document.createElement('div');
-                imgDiv.className = 'placed-image';
-                imgDiv.style.left = `${(outerMargin + img.x) * scale}px`;
-                imgDiv.style.top = `${(outerMargin + img.y) * scale}px`;
-                imgDiv.style.width = `${img.width * scale}px`;
-                imgDiv.style.height = `${img.height * scale}px`;
-                imgDiv.textContent = `${img.name}${img.rotated ? ' (R)' : ''}`;
-                pageContent.appendChild(imgDiv);
-            });
+            const canvas = document.createElement('canvas');
+            canvas.style.width = `${previewWidth}px`;
+            canvas.style.height = `${previewHeight}px`;
+            canvas.style.display = 'block';
+            pageContent.appendChild(canvas);
 
             preview.appendChild(pageDiv);
+
+            // Draw asynchronously so the UI remains responsive.
+            this.drawPagePreviewToCanvas(canvas, page, paperWidth, paperHeight, outerMargin, scale);
         });
     }
 
@@ -1183,13 +1238,13 @@ class FitPrint {
                     
                     pdf.addImage(
                         imageData,
-                        'JPEG',
+                        'PNG',
                         outerMargin + img.x,
                         outerMargin + img.y,
                         img.width,
                         img.height,
                         undefined,
-                        'FAST'
+                        'NONE'
                     );
                 } catch (error) {
                     console.error('Error adding image to PDF:', error);
@@ -1228,8 +1283,9 @@ class FitPrint {
                     
                     ctx.drawImage(img, 0, 0);
                 }
-                
-                resolve(canvas.toDataURL('image/jpeg', 0.8));
+
+                // Use lossless PNG export for maximum quality (no JPEG compression).
+                resolve(canvas.toDataURL('image/png'));
             };
             img.onerror = reject;
             img.src = imgData.dataUrl;
