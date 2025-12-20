@@ -28,6 +28,18 @@ header.site-header {
     position: sticky;
     top: 0;
     z-index: 1000;
+    overflow: hidden;
+}
+
+header.site-header::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 6px;
+    background: #991b1b;
+    pointer-events: none;
 }
 
 header.site-header .logo-section {
@@ -62,6 +74,12 @@ header.site-header .container {
     align-items: center;
     justify-content: center;
     gap: 12px;
+}
+
+.header-brand-image {
+    max-height: 88px;
+    width: auto;
+    display: block;
 }
 
 .title-logo-bubble {
