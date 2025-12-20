@@ -1,3 +1,5 @@
+const MM_PER_INCH = 25.4;
+
 class SheetBuilder {
     constructor() {
         this.images = [];
@@ -8,12 +10,15 @@ class SheetBuilder {
         this.bulkAspectRatio = null;
         this.lastPreviewParams = null;
         this._previewRerenderTimer = null;
+        // UI unit for all length inputs/labels. Internally we store and compute in mm.
+        this.unit = 'mm';
         this._exportState = {
             inProgress: false,
             abortController: null
         };
         this.initializeEventListeners();
         this.ensureDefaultPaperSettings();
+        this.initializeUnits();
     }
 
     getExportUi() {
@@ -56,6 +61,206 @@ class SheetBuilder {
         }
     }
 
+    getPaperSizePresetsMm() {
+        return {
+            a4: { width: 210, height: 297, label: 'A4' },
+            a3: { width: 297, height: 420, label: 'A3' },
+            a5: { width: 148, height: 210, label: 'A5' },
+            letter: { width: 216, height: 279, label: 'Letter' },
+            legal: { width: 216, height: 356, label: 'Legal' },
+            tabloid: { width: 279, height: 432, label: 'Tabloid' },
+            photo4x6: { width: 102, height: 152, label: 'Photo 4×6' },
+            photo5x7: { width: 127, height: 178, label: 'Photo 5×7' },
+            photo8x10: { width: 203, height: 254, label: 'Photo 8×10' }
+        };
+    }
+
+    getUnitLabel() {
+        return this.unit === 'in' ? 'in' : 'mm';
+    }
+
+    mmToDisplay(mm) {
+        if (!Number.isFinite(mm)) return NaN;
+        return this.unit === 'in' ? (mm / MM_PER_INCH) : mm;
+    }
+
+    displayToMm(value) {
+        if (!Number.isFinite(value)) return NaN;
+        return this.unit === 'in' ? (value * MM_PER_INCH) : value;
+    }
+
+    formatLengthValue(mm) {
+        const displayValue = this.mmToDisplay(mm);
+        if (!Number.isFinite(displayValue)) return '';
+        const decimals = this.unit === 'in' ? 2 : 1;
+        return displayValue.toFixed(decimals);
+    }
+
+    formatSizePair(mmW, mmH) {
+        return `${this.formatLengthValue(mmW)}×${this.formatLengthValue(mmH)}${this.getUnitLabel()}`;
+    }
+
+    parseLengthFromInputValue(raw) {
+        const num = parseFloat(raw);
+        if (!Number.isFinite(num)) return NaN;
+        return this.displayToMm(num);
+    }
+
+    readLengthInputMm(el) {
+        if (!el) return NaN;
+        return this.parseLengthFromInputValue(el.value);
+    }
+
+    writeLengthInputFromMm(el, mm) {
+        if (!el) return;
+        if (!Number.isFinite(mm)) {
+            el.value = '';
+            return;
+        }
+        el.value = this.formatLengthValue(mm);
+    }
+
+    syncLengthInputAttributes(el) {
+        if (!el) return;
+        const baseMinMm = parseFloat(el.dataset.minMm);
+        const baseStepMm = parseFloat(el.dataset.stepMm);
+
+        if (Number.isFinite(baseMinMm)) {
+            const minDisplay = this.mmToDisplay(baseMinMm);
+            if (Number.isFinite(minDisplay)) el.min = String(minDisplay);
+        }
+        if (Number.isFinite(baseStepMm)) {
+            const stepDisplay = this.mmToDisplay(baseStepMm);
+            if (Number.isFinite(stepDisplay)) el.step = String(stepDisplay);
+        }
+    }
+
+    syncAllLengthInputsAttributes() {
+        const ids = ['paperWidth', 'paperHeight', 'outerMargin', 'innerMargin', 'bulkWidth', 'bulkHeight'];
+        for (const id of ids) {
+            this.syncLengthInputAttributes(document.getElementById(id));
+        }
+        document.querySelectorAll('.image-config input[data-min-mm][data-step-mm]').forEach((el) => this.syncLengthInputAttributes(el));
+    }
+
+    updateUnitLabels() {
+        const label = this.getUnitLabel();
+        document.querySelectorAll('[data-unit-label]').forEach((el) => {
+            el.textContent = label;
+        });
+    }
+
+    updatePaperSizeOptionLabels() {
+        const presets = this.getPaperSizePresetsMm();
+        const select = document.getElementById('paperSize');
+        if (!select) return;
+        Array.from(select.options).forEach((opt) => {
+            if (!opt || opt.value === 'custom') return;
+            const preset = presets[opt.value];
+            if (!preset) return;
+            const baseLabel = opt.dataset.label || preset.label || opt.textContent;
+            opt.textContent = `${baseLabel} (${this.formatSizePair(preset.width, preset.height)})`;
+        });
+    }
+
+    getPaperSettingsMm() {
+        const paperWidthEl = document.getElementById('paperWidth');
+        const paperHeightEl = document.getElementById('paperHeight');
+        const outerMarginEl = document.getElementById('outerMargin');
+        const innerMarginEl = document.getElementById('innerMargin');
+
+        return {
+            paperWidth: this.readLengthInputMm(paperWidthEl),
+            paperHeight: this.readLengthInputMm(paperHeightEl),
+            outerMargin: this.readLengthInputMm(outerMarginEl),
+            innerMargin: this.readLengthInputMm(innerMarginEl)
+        };
+    }
+
+    rerenderAllImageConfigs() {
+        const list = document.getElementById('imagesList');
+        if (!list) return;
+
+        const selected = new Set(this.selectedImages);
+        list.innerHTML = '';
+        for (const img of this.images) {
+            this.renderImageConfig(img);
+        }
+
+        // Restore selection state
+        for (const id of selected) {
+            const checkbox = document.getElementById(`select-${id}`);
+            const config = document.querySelector(`[data-id="${id}"]`);
+            if (checkbox) checkbox.checked = true;
+            if (config) config.classList.add('selected');
+        }
+        this.updateQuickSelectionControls();
+        this.updateSelectionCount();
+    }
+
+    initializeUnits() {
+        const unitSelect = document.getElementById('unitSelect');
+        if (unitSelect) {
+            unitSelect.addEventListener('change', (e) => this.setUnit(e.target.value));
+        }
+
+        let preferred = null;
+        try {
+            preferred = localStorage.getItem('sheetbuilder_unit');
+        } catch {
+            preferred = null;
+        }
+
+        // Inputs are in mm on first load.
+        this.setUnit(preferred === 'in' ? 'in' : 'mm');
+    }
+
+    setUnit(nextUnit) {
+        const normalized = nextUnit === 'in' ? 'in' : 'mm';
+        const current = this.unit;
+
+        // Convert existing inputs from the current unit into mm before switching.
+        const paperMm = this.getPaperSettingsMm();
+
+        const bulkWidthEl = document.getElementById('bulkWidth');
+        const bulkHeightEl = document.getElementById('bulkHeight');
+        const bulkWidthMm = bulkWidthEl && bulkWidthEl.value ? this.readLengthInputMm(bulkWidthEl) : null;
+        const bulkHeightMm = bulkHeightEl && bulkHeightEl.value ? this.readLengthInputMm(bulkHeightEl) : null;
+
+        this.unit = normalized;
+
+        try {
+            localStorage.setItem('sheetbuilder_unit', normalized);
+        } catch {
+            // ignore
+        }
+
+        const unitSelect = document.getElementById('unitSelect');
+        if (unitSelect) unitSelect.value = normalized;
+
+        this.updateUnitLabels();
+        this.updatePaperSizeOptionLabels();
+        this.syncAllLengthInputsAttributes();
+
+        // Write paper/bulk values back in the new unit.
+        this.writeLengthInputFromMm(document.getElementById('paperWidth'), paperMm.paperWidth);
+        this.writeLengthInputFromMm(document.getElementById('paperHeight'), paperMm.paperHeight);
+        this.writeLengthInputFromMm(document.getElementById('outerMargin'), paperMm.outerMargin);
+        this.writeLengthInputFromMm(document.getElementById('innerMargin'), paperMm.innerMargin);
+        if (bulkWidthMm !== null) this.writeLengthInputFromMm(bulkWidthEl, bulkWidthMm);
+        if (bulkHeightMm !== null) this.writeLengthInputFromMm(bulkHeightEl, bulkHeightMm);
+
+        if (normalized !== current) {
+            this.rerenderAllImageConfigs();
+        } else {
+            // Still ensure labels/inputs inside dynamic configs match.
+            this.rerenderAllImageConfigs();
+        }
+
+        this.validateAllImages();
+        this.checkForCustomSize();
+    }
+
     ensureDefaultPaperSettings() {
         const paperSize = document.getElementById('paperSize');
         const paperWidthEl = document.getElementById('paperWidth');
@@ -66,22 +271,21 @@ class SheetBuilder {
         // Default to A4 unless the user explicitly chose something else.
         if (!paperSize.value) paperSize.value = 'a4';
 
+        const presets = this.getPaperSizePresetsMm();
+
         const selected = paperSize.value;
         if (selected === 'a4') {
-            const currentW = parseFloat(paperWidthEl.value);
-            const currentH = parseFloat(paperHeightEl.value);
-            if (!Number.isFinite(currentW) || !Number.isFinite(currentH) || Math.abs(currentW - 210) > 0.1 || Math.abs(currentH - 297) > 0.1) {
-                paperWidthEl.value = 210;
-                paperHeightEl.value = 297;
+            const { paperWidth: currentW, paperHeight: currentH } = this.getPaperSettingsMm();
+            if (!Number.isFinite(currentW) || !Number.isFinite(currentH) || Math.abs(currentW - presets.a4.width) > 0.1 || Math.abs(currentH - presets.a4.height) > 0.1) {
+                this.writeLengthInputFromMm(paperWidthEl, presets.a4.width);
+                this.writeLengthInputFromMm(paperHeightEl, presets.a4.height);
             }
         }
 
-        const w = parseFloat(paperWidthEl.value);
-        const h = parseFloat(paperHeightEl.value);
-        const outer = parseFloat(outerMarginEl.value);
+        const { paperWidth: w, paperHeight: h, outerMargin: outer } = this.getPaperSettingsMm();
         const maxOuter = Number.isFinite(w) && Number.isFinite(h) ? Math.max(0, (Math.min(w, h) / 2) - 0.1) : 0;
         if (!Number.isFinite(outer) || outer < 0 || outer > maxOuter) {
-            outerMarginEl.value = 10;
+            this.writeLengthInputFromMm(outerMarginEl, 10);
         }
 
         this.checkForCustomSize();
@@ -303,31 +507,21 @@ class SheetBuilder {
 
     handlePaperSizeChange(event) {
         const selectedSize = event.target.value;
-        const paperSizes = {
-            'a4': { width: 210, height: 297 },
-            'a3': { width: 297, height: 420 },
-            'a5': { width: 148, height: 210 },
-            'letter': { width: 216, height: 279 },
-            'legal': { width: 216, height: 356 },
-            'tabloid': { width: 279, height: 432 },
-            'photo4x6': { width: 102, height: 152 },
-            'photo5x7': { width: 127, height: 178 },
-            'photo8x10': { width: 203, height: 254 }
-        };
+        const paperSizes = this.getPaperSizePresetsMm();
 
         if (selectedSize !== 'custom' && paperSizes[selectedSize]) {
             const size = paperSizes[selectedSize];
-            document.getElementById('paperWidth').value = size.width;
-            document.getElementById('paperHeight').value = size.height;
+            this.writeLengthInputFromMm(document.getElementById('paperWidth'), size.width);
+            this.writeLengthInputFromMm(document.getElementById('paperHeight'), size.height);
 
             // If the current outer margin is invalid for this preset (or was set to something huge),
             // reset it to a sane default so users don't get negative printable areas.
             const outerMarginInput = document.getElementById('outerMargin');
             if (outerMarginInput) {
-                const currentOuter = parseFloat(outerMarginInput.value);
+                const currentOuter = this.readLengthInputMm(outerMarginInput);
                 const maxOuter = Math.max(0, (Math.min(size.width, size.height) / 2) - 0.1);
                 if (!Number.isFinite(currentOuter) || currentOuter > maxOuter) {
-                    outerMarginInput.value = 10;
+                    this.writeLengthInputFromMm(outerMarginInput, 10);
                 }
             }
             
@@ -337,21 +531,10 @@ class SheetBuilder {
     }
 
     checkForCustomSize() {
-        const currentWidth = parseFloat(document.getElementById('paperWidth').value);
-        const currentHeight = parseFloat(document.getElementById('paperHeight').value);
+        const { paperWidth: currentWidth, paperHeight: currentHeight } = this.getPaperSettingsMm();
         const paperSizeSelect = document.getElementById('paperSize');
         
-        const paperSizes = {
-            'a4': { width: 210, height: 297 },
-            'a3': { width: 297, height: 420 },
-            'a5': { width: 148, height: 210 },
-            'letter': { width: 216, height: 279 },
-            'legal': { width: 216, height: 356 },
-            'tabloid': { width: 279, height: 432 },
-            'photo4x6': { width: 102, height: 152 },
-            'photo5x7': { width: 127, height: 178 },
-            'photo8x10': { width: 203, height: 254 }
-        };
+        const paperSizes = this.getPaperSizePresetsMm();
 
         // Check if current dimensions match any preset
         let matchingSize = 'custom';
@@ -388,14 +571,14 @@ class SheetBuilder {
             <div class="config-inputs">
                 <div class="input-with-lock">
                     <div style="width: 100%;">
-                        <label>Width (mm):</label>
-                        <input type="number" value="${imageData.width.toFixed(1)}" min="1" step="0.1" 
+                        <label>Width (${this.getUnitLabel()}):</label>
+                        <input type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
                                onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)">
                     </div>
                 </div>
                 <div>
-                    <label>Height (mm):</label>
-                    <input type="number" value="${imageData.height.toFixed(1)}" min="1" step="0.1" 
+                    <label>Height (${this.getUnitLabel()}):</label>
+                    <input type="number" value="${this.formatLengthValue(imageData.height)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
                            onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)">
                 </div>
                 <div>
@@ -407,6 +590,8 @@ class SheetBuilder {
             <button class="remove-btn" onclick="sheetBuilder.removeImage(${imageData.id})">Remove</button>
         `;
         list.appendChild(config);
+
+        this.syncAllLengthInputsAttributes();
         
         // Show quick selection controls and update selection count
         this.updateQuickSelectionControls();
@@ -434,7 +619,7 @@ class SheetBuilder {
     updateImageSize(id, property, value) {
         const image = this.images.find(img => img.id === id);
         if (image) {
-            const numValue = parseFloat(value);
+            const numValue = property === 'copies' ? parseFloat(value) : this.parseLengthFromInputValue(value);
             
             if (property === 'width') {
                 image.width = numValue;
@@ -443,7 +628,7 @@ class SheetBuilder {
                 // Update the height input field
                 const config = document.querySelector(`[data-id="${id}"]`);
                 const heightInput = config.querySelector('input[onchange*="height"]');
-                heightInput.value = image.height.toFixed(1);
+                heightInput.value = this.formatLengthValue(image.height);
             } else if (property === 'height') {
                 image.height = numValue;
                 // Maintain aspect ratio
@@ -451,7 +636,7 @@ class SheetBuilder {
                 // Update the width input field
                 const config = document.querySelector(`[data-id="${id}"]`);
                 const widthInput = config.querySelector('input[onchange*="width"]');
-                widthInput.value = image.width.toFixed(1);
+                widthInput.value = this.formatLengthValue(image.width);
             } else {
                 image[property] = numValue;
             }
@@ -462,9 +647,7 @@ class SheetBuilder {
     }
 
     validateImageInRealTime(image) {
-        const paperWidth = parseFloat(document.getElementById('paperWidth').value);
-        const paperHeight = parseFloat(document.getElementById('paperHeight').value);
-        const outerMargin = parseFloat(document.getElementById('outerMargin').value);
+        const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
 
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
         
@@ -497,7 +680,7 @@ class SheetBuilder {
                 warning.className = 'size-warning';
                 const maxW = Math.max(0, Math.max(printableWidth, printableHeight));
                 const maxH = Math.max(0, Math.min(printableWidth, printableHeight));
-                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${maxW.toFixed(1)}×${maxH.toFixed(1)}mm`;
+                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${this.formatSizePair(maxW, maxH)}`;
                 config.appendChild(warning);
             }
         } else {
@@ -523,7 +706,7 @@ class SheetBuilder {
         const printableWidth = paperWidth - (2 * outerMargin);
         const printableHeight = paperHeight - (2 * outerMargin);
         if (printableWidth <= 0 || printableHeight <= 0) {
-            return `Outer margin is too large for the selected paper size (printable area would be ${printableWidth.toFixed(1)}×${printableHeight.toFixed(1)}mm). Reduce the outer margin or increase paper size.`;
+            return `Outer margin is too large for the selected paper size (printable area would be ${this.formatSizePair(printableWidth, printableHeight)}). Reduce the outer margin or increase paper size.`;
         }
 
         return null;
@@ -682,7 +865,7 @@ class SheetBuilder {
     handleBulkWidthChange(event) {
         if (!this.isRatioLocked) return;
         
-        const width = parseFloat(event.target.value);
+        const width = this.parseLengthFromInputValue(event.target.value);
         if (isNaN(width) || width <= 0) return;
         
         // Use average aspect ratio of selected images or a default ratio
@@ -690,13 +873,13 @@ class SheetBuilder {
         if (!aspectRatio) aspectRatio = 1.5; // Default aspect ratio
         
         const height = width / aspectRatio;
-        document.getElementById('bulkHeight').value = height.toFixed(1);
+        this.writeLengthInputFromMm(document.getElementById('bulkHeight'), height);
     }
 
     handleBulkHeightChange(event) {
         if (!this.isRatioLocked) return;
         
-        const height = parseFloat(event.target.value);
+        const height = this.parseLengthFromInputValue(event.target.value);
         if (isNaN(height) || height <= 0) return;
         
         // Use average aspect ratio of selected images or a default ratio
@@ -704,7 +887,7 @@ class SheetBuilder {
         if (!aspectRatio) aspectRatio = 1.5; // Default aspect ratio
         
         const width = height * aspectRatio;
-        document.getElementById('bulkWidth').value = width.toFixed(1);
+        this.writeLengthInputFromMm(document.getElementById('bulkWidth'), width);
     }
 
     getAverageSelectedAspectRatio() {
@@ -739,7 +922,7 @@ class SheetBuilder {
             const oldValues = { width: img.width, height: img.height, copies: img.copies };
             
             if (bulkWidth) {
-                img.width = parseFloat(bulkWidth);
+                img.width = this.parseLengthFromInputValue(bulkWidth);
                 if (this.isRatioLocked) {
                     // Use the original image aspect ratio, not bulk aspect ratio
                     img.height = img.width / img.aspectRatio;
@@ -749,11 +932,11 @@ class SheetBuilder {
             if (bulkHeight) {
                 if (this.isRatioLocked) {
                     // If ratio locked and height is provided, adjust width to maintain ratio
-                    img.height = parseFloat(bulkHeight);
+                    img.height = this.parseLengthFromInputValue(bulkHeight);
                     img.width = img.height * img.aspectRatio;
                 } else {
                     // If ratio not locked, just set height
-                    img.height = parseFloat(bulkHeight);
+                    img.height = this.parseLengthFromInputValue(bulkHeight);
                 }
             }
             
@@ -786,8 +969,8 @@ class SheetBuilder {
         const heightInput = config.querySelector('input[onchange*="height"]');
         const copiesInput = config.querySelector('input[onchange*="copies"]');
 
-        if (widthInput) widthInput.value = imageData.width.toFixed(1);
-        if (heightInput) heightInput.value = imageData.height.toFixed(1);
+        if (widthInput) widthInput.value = this.formatLengthValue(imageData.width);
+        if (heightInput) heightInput.value = this.formatLengthValue(imageData.height);
         if (copiesInput) copiesInput.value = imageData.copies;
     }
 
@@ -919,10 +1102,7 @@ class SheetBuilder {
             return;
         }
 
-        const paperWidth = parseFloat(document.getElementById('paperWidth').value);
-        const paperHeight = parseFloat(document.getElementById('paperHeight').value);
-        const outerMargin = parseFloat(document.getElementById('outerMargin').value);
-        const innerMargin = parseFloat(document.getElementById('innerMargin').value);
+        const { paperWidth, paperHeight, outerMargin, innerMargin } = this.getPaperSettingsMm();
         const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
 
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
@@ -947,9 +1127,9 @@ class SheetBuilder {
             const requiresRotation = this.images.filter(img => img.width > printableWidth || img.height > printableHeight);
             if (requiresRotation.length > 0) {
                 let warningMessage = `WARNING: Rotation is disabled, but some images only fit when rotated:\n\n`;
-                warningMessage += `Printable area: ${printableWidth.toFixed(1)}mm × ${printableHeight.toFixed(1)}mm\n\n`;
+                warningMessage += `Printable area: ${this.formatLengthValue(printableWidth)}${this.getUnitLabel()} × ${this.formatLengthValue(printableHeight)}${this.getUnitLabel()}\n\n`;
                 requiresRotation.forEach(img => {
-                    warningMessage += `• ${img.name}: ${img.width.toFixed(1)}mm × ${img.height.toFixed(1)}mm\n`;
+                    warningMessage += `• ${img.name}: ${this.formatLengthValue(img.width)}${this.getUnitLabel()} × ${this.formatLengthValue(img.height)}${this.getUnitLabel()}\n`;
                 });
                 warningMessage += `\nEnable “Allow Rotation” or reduce the size.`;
                 alert(warningMessage);
@@ -1009,13 +1189,13 @@ class SheetBuilder {
 
     showOversizedWarning(oversizedImages, printableWidth, printableHeight) {
         let warningMessage = `WARNING: The following images are too large to fit on the paper:\n\n`;
-        warningMessage += `Printable area: ${Math.max(0, printableWidth).toFixed(1)}mm × ${Math.max(0, printableHeight).toFixed(1)}mm\n\n`;
+        warningMessage += `Printable area: ${this.formatLengthValue(Math.max(0, printableWidth))}${this.getUnitLabel()} × ${this.formatLengthValue(Math.max(0, printableHeight))}${this.getUnitLabel()}\n\n`;
         
         oversizedImages.forEach(img => {
-            warningMessage += `• ${img.name}: ${img.width.toFixed(1)}mm × ${img.height.toFixed(1)}mm\n`;
+            warningMessage += `• ${img.name}: ${this.formatLengthValue(img.width)}${this.getUnitLabel()} × ${this.formatLengthValue(img.height)}${this.getUnitLabel()}\n`;
             const maxW = Math.max(0, Math.max(printableWidth, printableHeight));
             const maxH = Math.max(0, Math.min(printableWidth, printableHeight));
-            warningMessage += `  Max size (any orientation): ${maxW.toFixed(1)}mm × ${maxH.toFixed(1)}mm\n\n`;
+            warningMessage += `  Max size (any orientation): ${this.formatLengthValue(maxW)}${this.getUnitLabel()} × ${this.formatLengthValue(maxH)}${this.getUnitLabel()}\n\n`;
         });
         
         warningMessage += `Please reduce the size of these images or increase the paper size/reduce margins.`;
@@ -1038,7 +1218,7 @@ class SheetBuilder {
                 
                 const warning = document.createElement('div');
                 warning.className = 'size-warning';
-                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${img.maxWidth.toFixed(1)}×${img.maxHeight.toFixed(1)}mm`;
+                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${this.formatSizePair(img.maxWidth, img.maxHeight)}`;
                 config.appendChild(warning);
             }
         });
@@ -1467,7 +1647,7 @@ class SheetBuilder {
     findBestPlacementOnPage(image, page, pageWidth, pageHeight, margin) {
         const placements = this.getAllPossiblePlacements(image, page, pageWidth, pageHeight, margin);
         
-        console.log(`Finding placement for image ${image.name} (${image.width}x${image.height}mm)`);
+        console.log(`Finding placement for image ${image.name} (${this.formatLengthValue(image.width)}x${this.formatLengthValue(image.height)}${this.getUnitLabel()})`);
         console.log(`Page has ${page.images.length} existing images`);
         console.log(`Found ${placements.length} possible placements`);
         
@@ -1757,12 +1937,8 @@ class SheetBuilder {
         this.setExportOverlayVisible(true);
 
         const { jsPDF } = window.jspdf;
-        const paperWidth = parseFloat(document.getElementById('paperWidth').value);
-        const paperHeight = parseFloat(document.getElementById('paperHeight').value);
-        const outerMargin = parseFloat(document.getElementById('outerMargin').value);
+        const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
 
-        // Convert mm to points (1mm = 2.834645669 points)
-        const mmToPt = 2.834645669;
         const pdf = new jsPDF({
             orientation: paperWidth > paperHeight ? 'landscape' : 'portrait',
             unit: 'mm',

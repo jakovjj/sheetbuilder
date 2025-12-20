@@ -23,6 +23,14 @@
                     </div>
                     <p>Free smart image layout for optimal printing (gang sheets, DTF and more)</p>
                 </div>
+
+                <div class="header-controls" aria-label="Units">
+                    <label class="header-control-label" for="unitSelect">Units:</label>
+                    <select id="unitSelect" class="header-control-select">
+                        <option value="mm">mm</option>
+                        <option value="in">inches</option>
+                    </select>
+                </div>
             </div>
         </div>
     </header>
@@ -32,8 +40,7 @@
             <section id="howto" class="intro-section">
                 <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-circle-info"></i></span>How to use SheetBuilder</h2>
                 <div class="howto-content">
-                    <p class="howto-paragraph">Upload your images, set each image size (mm) and copies (or use Bulk Edit), then choose your paper size and margins. When you’re ready, click Generate Layout and then Export to PDF.</p>
-                    <p class="howto-note">Tip: You can drag & drop images, or paste from clipboard.</p>
+                    <p class="howto-paragraph">Upload your images, set each image size (<span class="unit-label" data-unit-label>mm</span>) and copies (or use Bulk Edit), then choose your paper size and margins. When you’re ready, click Generate Layout and then Export to PDF.</p>
                 </div>
             </section>
 
@@ -69,12 +76,12 @@
                         <div class="bulk-inputs">
                             <span id="selectionCount">0 images selected</span>
                             <div class="bulk-input-group">
-                                <label>Width (mm):</label>
-                                <input type="number" id="bulkWidth" min="1" step="0.1" placeholder="Width">
+                                <label>Width (<span class="unit-label" data-unit-label>mm</span>):</label>
+                                <input type="number" id="bulkWidth" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1" placeholder="Width">
                             </div>
                             <div class="bulk-input-group">
-                                <label>Height (mm):</label>
-                                <input type="number" id="bulkHeight" min="1" step="0.1" placeholder="Height">
+                                <label>Height (<span class="unit-label" data-unit-label>mm</span>):</label>
+                                <input type="number" id="bulkHeight" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1" placeholder="Height">
                             </div>
                             <div class="bulk-input-group">
                                 <label>Copies:</label>
@@ -114,32 +121,32 @@
                         <label for="paperSize">Paper Size:</label>
                         <select id="paperSize">
                             <option value="custom">Custom</option>
-                            <option value="a4" selected>A4 (210×297mm)</option>
-                            <option value="a3">A3 (297×420mm)</option>
-                            <option value="a5">A5 (148×210mm)</option>
-                            <option value="letter">Letter (216×279mm)</option>
-                            <option value="legal">Legal (216×356mm)</option>
-                            <option value="tabloid">Tabloid (279×432mm)</option>
-                            <option value="photo4x6">Photo 4×6 (102×152mm)</option>
-                            <option value="photo5x7">Photo 5×7 (127×178mm)</option>
-                            <option value="photo8x10">Photo 8×10 (203×254mm)</option>
+                            <option value="a4" selected data-w-mm="210" data-h-mm="297" data-label="A4">A4</option>
+                            <option value="a3" data-w-mm="297" data-h-mm="420" data-label="A3">A3</option>
+                            <option value="a5" data-w-mm="148" data-h-mm="210" data-label="A5">A5</option>
+                            <option value="letter" data-w-mm="216" data-h-mm="279" data-label="Letter">Letter</option>
+                            <option value="legal" data-w-mm="216" data-h-mm="356" data-label="Legal">Legal</option>
+                            <option value="tabloid" data-w-mm="279" data-h-mm="432" data-label="Tabloid">Tabloid</option>
+                            <option value="photo4x6" data-w-mm="102" data-h-mm="152" data-label="Photo 4×6">Photo 4×6</option>
+                            <option value="photo5x7" data-w-mm="127" data-h-mm="178" data-label="Photo 5×7">Photo 5×7</option>
+                            <option value="photo8x10" data-w-mm="203" data-h-mm="254" data-label="Photo 8×10">Photo 8×10</option>
                         </select>
                     </div>
                     <div class="setting-group">
-                        <label for="paperWidth">Paper Width (mm):</label>
-                        <input type="number" id="paperWidth" value="210" min="1">
+                        <label for="paperWidth">Paper Width (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="paperWidth" value="210" min="1" data-min-mm="1" data-step-mm="1">
                     </div>
                     <div class="setting-group">
-                        <label for="paperHeight">Paper Height (mm):</label>
-                        <input type="number" id="paperHeight" value="297" min="1">
+                        <label for="paperHeight">Paper Height (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="paperHeight" value="297" min="1" data-min-mm="1" data-step-mm="1">
                     </div>
                     <div class="setting-group">
-                        <label for="outerMargin">Outer Margin (mm):</label>
-                        <input type="number" id="outerMargin" value="10" min="0" step="0.1">
+                        <label for="outerMargin">Outer Margin (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="outerMargin" value="10" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1">
                     </div>
                     <div class="setting-group">
-                        <label for="innerMargin">Image Spacing (mm):</label>
-                        <input type="number" id="innerMargin" value="5" min="0" step="0.1">
+                        <label for="innerMargin">Image Spacing (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="innerMargin" value="5" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1">
                         <small>Space between images</small>
                     </div>
                     <div class="setting-group">

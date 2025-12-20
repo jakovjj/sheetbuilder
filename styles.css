@@ -69,6 +69,44 @@ header.site-header .container {
     position: relative;
 }
 
+.header-controls {
+    position: absolute;
+    right: 20px;
+    top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 0;
+}
+
+.header-control-label {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.header-control-select {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+    padding: 6px 10px;
+    border-radius: 10px;
+    outline: none;
+}
+
+.header-control-select option {
+    color: #111827;
+}
+
+@media (max-width: 640px) {
+    .header-controls {
+        position: static;
+        margin-top: 10px;
+        right: auto;
+        top: auto;
+    }
+}
+
 .title-row {
     display: flex;
     align-items: center;
