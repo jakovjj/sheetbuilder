@@ -1,4 +1,4 @@
-class FitPrint {
+class SheetBuilder {
     constructor() {
         this.images = [];
         this.layout = [];
@@ -8,8 +8,52 @@ class FitPrint {
         this.bulkAspectRatio = null;
         this.lastPreviewParams = null;
         this._previewRerenderTimer = null;
+        this._exportState = {
+            inProgress: false,
+            abortController: null
+        };
         this.initializeEventListeners();
         this.ensureDefaultPaperSettings();
+    }
+
+    getExportUi() {
+        return {
+            overlay: document.getElementById('exportOverlay'),
+            status: document.getElementById('exportStatus'),
+            bar: document.getElementById('exportProgressBar'),
+            text: document.getElementById('exportProgressText'),
+            cancelBtn: document.getElementById('cancelExport')
+        };
+    }
+
+    setExportOverlayVisible(visible) {
+        const { overlay } = this.getExportUi();
+        if (!overlay) return;
+        overlay.classList.toggle('hidden', !visible);
+    }
+
+    setExportProgress(current, total, statusText) {
+        const { status, bar, text } = this.getExportUi();
+        const safeTotal = Math.max(1, Number.isFinite(total) ? total : 1);
+        const safeCurrent = Math.min(safeTotal, Math.max(0, Number.isFinite(current) ? current : 0));
+        const percent = Math.round((safeCurrent / safeTotal) * 100);
+        if (status && typeof statusText === 'string') status.textContent = statusText;
+        if (bar) bar.style.width = `${percent}%`;
+        if (text) text.textContent = `${percent}%`;
+    }
+
+    cancelExport() {
+        if (!this._exportState?.inProgress) return;
+        const { cancelBtn } = this.getExportUi();
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = 'Canceling…';
+        }
+        try {
+            this._exportState.abortController?.abort();
+        } catch {
+            // ignore
+        }
     }
 
     ensureDefaultPaperSettings() {
@@ -188,6 +232,7 @@ class FitPrint {
         const generateBtn = document.getElementById('generateLayout');
         const exportBtn = document.getElementById('exportPDF');
         const paperSize = document.getElementById('paperSize');
+        const cancelExportBtn = document.getElementById('cancelExport');
         
         // Paper setting inputs for real-time validation
         const paperWidth = document.getElementById('paperWidth');
@@ -214,6 +259,8 @@ class FitPrint {
         generateBtn.addEventListener('click', () => this.generateLayout());
         exportBtn.addEventListener('click', () => this.exportToPDF());
         paperSize.addEventListener('change', (e) => this.handlePaperSizeChange(e));
+
+        if (cancelExportBtn) cancelExportBtn.addEventListener('click', () => this.cancelExport());
         
         // Bulk edit event listeners
         if (selectAllBtn) selectAllBtn.addEventListener('click', () => this.selectAllImages());
@@ -335,29 +382,29 @@ class FitPrint {
         config.dataset.id = imageData.id;
         config.innerHTML = `
             <input type="checkbox" class="select-checkbox" id="select-${imageData.id}" 
-                   onclick="fitPrint.handleCheckboxClick(event, ${imageData.id})">
+                   onclick="sheetBuilder.handleCheckboxClick(event, ${imageData.id})">
             <img src="${imageData.dataUrl}" alt="${imageData.name}" 
-                 onclick="fitPrint.showImageModal('${imageData.dataUrl}', '${imageData.name}', '${imageData.originalWidth}x${imageData.originalHeight}')">
+                 onclick="sheetBuilder.showImageModal('${imageData.dataUrl}', '${imageData.name}', '${imageData.originalWidth}x${imageData.originalHeight}')">
             <div class="config-inputs">
                 <div class="input-with-lock">
                     <div style="width: 100%;">
                         <label>Width (mm):</label>
                         <input type="number" value="${imageData.width.toFixed(1)}" min="1" step="0.1" 
-                               onchange="fitPrint.updateImageSize(${imageData.id}, 'width', this.value)">
+                               onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)">
                     </div>
                 </div>
                 <div>
                     <label>Height (mm):</label>
                     <input type="number" value="${imageData.height.toFixed(1)}" min="1" step="0.1" 
-                           onchange="fitPrint.updateImageSize(${imageData.id}, 'height', this.value)">
+                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)">
                 </div>
                 <div>
                     <label>Copies:</label>
                     <input type="number" value="${imageData.copies}" min="1" 
-                           onchange="fitPrint.updateImageSize(${imageData.id}, 'copies', this.value)">
+                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'copies', this.value)">
                 </div>
             </div>
-            <button class="remove-btn" onclick="fitPrint.removeImage(${imageData.id})">Remove</button>
+            <button class="remove-btn" onclick="sheetBuilder.removeImage(${imageData.id})">Remove</button>
         `;
         list.appendChild(config);
         
@@ -1685,10 +1732,29 @@ class FitPrint {
     }
 
     async exportToPDF() {
+        if (this._exportState?.inProgress) {
+            return;
+        }
         if (this.layout.length === 0) {
             alert('Please generate a layout first!');
             return;
         }
+
+        const exportBtn = document.getElementById('exportPDF');
+        const { cancelBtn } = this.getExportUi();
+        const abortController = new AbortController();
+        this._exportState = {
+            inProgress: true,
+            abortController
+        };
+
+        if (exportBtn) exportBtn.disabled = true;
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel';
+        }
+
+        this.setExportOverlayVisible(true);
 
         const { jsPDF } = window.jspdf;
         const paperWidth = parseFloat(document.getElementById('paperWidth').value);
@@ -1703,43 +1769,117 @@ class FitPrint {
             format: [paperWidth, paperHeight]
         });
 
-        for (let pageIndex = 0; pageIndex < this.layout.length; pageIndex++) {
-            if (pageIndex > 0) {
-                pdf.addPage();
+        const totalImages = this.layout.reduce((sum, page) => sum + (page.images?.length || 0), 0);
+        let completed = 0;
+
+        const throwIfAborted = () => {
+            if (abortController.signal.aborted) {
+                throw new DOMException('Export canceled', 'AbortError');
             }
+        };
 
-            const page = this.layout[pageIndex];
+        try {
+            this.setExportProgress(0, totalImages, 'Preparing…');
+            throwIfAborted();
 
-            for (const img of page.images) {
-                try {
-                    // Load image and add to PDF
-                    const imageData = await this.loadImageForPDF(img);
-                    
-                    pdf.addImage(
-                        imageData,
-                        'PNG',
-                        outerMargin + img.x,
-                        outerMargin + img.y,
-                        img.width,
-                        img.height,
-                        undefined,
-                        'NONE'
-                    );
-                } catch (error) {
-                    console.error('Error adding image to PDF:', error);
+            for (let pageIndex = 0; pageIndex < this.layout.length; pageIndex++) {
+                throwIfAborted();
+                if (pageIndex > 0) {
+                    pdf.addPage();
+                }
+
+                const page = this.layout[pageIndex];
+                this.setExportProgress(completed, totalImages, `Rendering page ${pageIndex + 1}/${this.layout.length}…`);
+
+                for (const img of page.images) {
+                    throwIfAborted();
+                    try {
+                        const imageData = await this.loadImageForPDF(img, abortController.signal);
+                        throwIfAborted();
+
+                        pdf.addImage(
+                            imageData,
+                            'PNG',
+                            outerMargin + img.x,
+                            outerMargin + img.y,
+                            img.width,
+                            img.height,
+                            undefined,
+                            'NONE'
+                        );
+                    } catch (error) {
+                        if (error && (error.name === 'AbortError' || error.message === 'Export canceled')) {
+                            throw error;
+                        }
+                        console.error('Error adding image to PDF:', error);
+                    } finally {
+                        completed += 1;
+                        this.setExportProgress(completed, totalImages, `Rendering page ${pageIndex + 1}/${this.layout.length}…`);
+                    }
                 }
             }
-        }
 
-        pdf.save('fitprint-layout.pdf');
+            throwIfAborted();
+            this.setExportProgress(totalImages, totalImages, 'Saving PDF…');
+            pdf.save('sheetbuilder-layout.pdf');
+            this.setExportProgress(totalImages, totalImages, 'Done');
+        } catch (error) {
+            if (error && error.name === 'AbortError') {
+                this.setExportProgress(completed, totalImages, 'Canceled');
+                return;
+            }
+            console.error('Export failed:', error);
+            alert('Export failed. Please try again.');
+        } finally {
+            window.setTimeout(() => {
+                this.setExportOverlayVisible(false);
+            }, 150);
+
+            if (exportBtn) exportBtn.disabled = false;
+            this._exportState = {
+                inProgress: false,
+                abortController: null
+            };
+        }
     }
 
-    loadImageForPDF(imgData) {
+    loadImageForPDF(imgData, abortSignal) {
         return new Promise((resolve, reject) => {
             const img = new Image();
+
+            const abort = () => {
+                try {
+                    img.onload = null;
+                    img.onerror = null;
+                    img.src = '';
+                } catch {
+                    // ignore
+                }
+                reject(new DOMException('Export canceled', 'AbortError'));
+            };
+
+            if (abortSignal?.aborted) {
+                abort();
+                return;
+            }
+
+            const onAbort = () => abort();
+            if (abortSignal) {
+                abortSignal.addEventListener('abort', onAbort, { once: true });
+            }
+
             img.onload = () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
+
+                if (abortSignal) {
+                    abortSignal.removeEventListener('abort', onAbort);
+                }
+
+                if (abortSignal?.aborted) {
+                    reject(new DOMException('Export canceled', 'AbortError'));
+                    return;
+                }
                 
                 if (imgData.rotated) {
                     canvas.width = img.height;
@@ -1766,11 +1906,16 @@ class FitPrint {
                 // Use lossless PNG export for maximum quality (no JPEG compression).
                 resolve(canvas.toDataURL('image/png'));
             };
-            img.onerror = reject;
+            img.onerror = (e) => {
+                if (abortSignal) {
+                    abortSignal.removeEventListener('abort', onAbort);
+                }
+                reject(e);
+            };
             img.src = imgData.dataUrl;
         });
     }
 }
 
 // Initialize the application
-const fitPrint = new FitPrint();
+const sheetBuilder = new SheetBuilder();

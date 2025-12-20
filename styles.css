@@ -145,7 +145,7 @@ h2 {
     padding-bottom: 10px;
 }
 
-.upload-section, .settings-section, .images-section, .actions-section, .preview-section {
+.intro-section, .upload-section, .settings-section, .images-section, .actions-section, .preview-section {
     background: #ffffff;
     border: 1px solid rgba(220, 38, 38, 0.1);
     border-radius: 16px;
@@ -156,9 +156,26 @@ h2 {
     transition: all 0.3s ease;
 }
 
-.upload-section:hover, .settings-section:hover, .images-section:hover, .actions-section:hover, .preview-section:hover {
+.intro-section:hover, .upload-section:hover, .settings-section:hover, .images-section:hover, .actions-section:hover, .preview-section:hover {
     transform: translateY(-2px);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.howto-content {
+    max-width: 900px;
+    margin: 0 auto;
+    text-align: left;
+}
+
+.howto-paragraph {
+    margin: 0;
+    color: #374151;
+}
+
+.howto-note {
+    margin-top: 12px;
+    color: #666;
+    font-size: 0.95rem;
 }
 
 .file-upload {
@@ -1353,6 +1370,32 @@ input:focus-visible {
     margin: 0;
     opacity: 0.8;
     font-size: 1rem;
+}
+
+.export-content {
+    min-width: min(520px, calc(100vw - 40px));
+}
+
+.export-progress {
+    width: 100%;
+    height: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.12);
+    margin-top: 18px;
+    overflow: hidden;
+}
+
+.export-progress-bar {
+    height: 100%;
+    background: #dc2626;
+    width: 0%;
+    transition: width 160ms ease;
+}
+
+.export-progress-text {
+    margin-top: 10px;
+    font-weight: 600;
+    color: white;
 }
 
 /* ============================================================

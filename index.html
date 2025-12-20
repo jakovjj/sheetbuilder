@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitPrint - Smart Image Layout for Printing (Gang Sheets, DTF and more)</title>
+    <title>SheetBuilder - Smart Image Layout for Printing (Gang Sheets, DTF and more)</title>
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -19,7 +19,7 @@
             <div class="header-content">
                 <div class="title-section">
                     <div class="title-row">
-                        <img src="logo.png" alt="FitPrint" class="header-brand-image" onerror="this.style.display='none'">
+                        <img src="logo.png" alt="SheetBuilder" class="header-brand-image" onerror="this.style.display='none'">
                     </div>
                     <p>Free smart image layout for optimal printing (gang sheets, DTF and more)</p>
                 </div>
@@ -29,6 +29,14 @@
 
     <div class="container">
         <main>
+            <section id="howto" class="intro-section">
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-circle-info"></i></span>How to use SheetBuilder</h2>
+                <div class="howto-content">
+                    <p class="howto-paragraph">Upload your images, set each image size (mm) and copies (or use Bulk Edit), then choose your paper size and margins. When you’re ready, click Generate Layout and then Export to PDF.</p>
+                    <p class="howto-note">Tip: You can drag & drop images, or paste from clipboard.</p>
+                </div>
+            </section>
+
             <section id="upload" class="upload-section">
                 <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-folder-open"></i></span>Upload Images</h2>
                 <div class="file-upload">
@@ -49,7 +57,7 @@
                 
                 <!-- Bulk Edit Section -->
                 <div class="bulk-edit-section">
-                    <h3 onclick="fitPrint.toggleBulkEdit()" class="bulk-edit-header">
+                    <h3 onclick="sheetBuilder.toggleBulkEdit()" class="bulk-edit-header">
                         <span class="section-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked"></i></span>Bulk Edit Selected Images<span id="bulkToggleIcon" class="toggle-icon collapsed"></span>
                     </h3>
                     <div class="bulk-controls collapsed" id="bulkControls">
@@ -161,6 +169,20 @@
                     <div class="loading-spinner"></div>
                     <h3>Generating Layout...</h3>
                     <p>Optimizing image placement for maximum efficiency</p>
+                </div>
+            </div>
+
+            <!-- Export Overlay -->
+            <div id="exportOverlay" class="loading-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+                <div class="loading-content export-content">
+                    <div class="loading-spinner"></div>
+                    <h3 id="exportTitle">Exporting to PDF...</h3>
+                    <p id="exportStatus">Starting…</p>
+                    <div class="export-progress" aria-hidden="true">
+                        <div id="exportProgressBar" class="export-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div id="exportProgressText" class="export-progress-text">0%</div>
+                    <button id="cancelExport" class="action-btn secondary" type="button">Cancel</button>
                 </div>
             </div>
 
