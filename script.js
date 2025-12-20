@@ -9,6 +9,39 @@ class FitPrint {
         this.lastPreviewParams = null;
         this._previewRerenderTimer = null;
         this.initializeEventListeners();
+        this.ensureDefaultPaperSettings();
+    }
+
+    ensureDefaultPaperSettings() {
+        const paperSize = document.getElementById('paperSize');
+        const paperWidthEl = document.getElementById('paperWidth');
+        const paperHeightEl = document.getElementById('paperHeight');
+        const outerMarginEl = document.getElementById('outerMargin');
+        if (!paperSize || !paperWidthEl || !paperHeightEl || !outerMarginEl) return;
+
+        // Default to A4 unless the user explicitly chose something else.
+        if (!paperSize.value) paperSize.value = 'a4';
+
+        const selected = paperSize.value;
+        if (selected === 'a4') {
+            const currentW = parseFloat(paperWidthEl.value);
+            const currentH = parseFloat(paperHeightEl.value);
+            if (!Number.isFinite(currentW) || !Number.isFinite(currentH) || Math.abs(currentW - 210) > 0.1 || Math.abs(currentH - 297) > 0.1) {
+                paperWidthEl.value = 210;
+                paperHeightEl.value = 297;
+            }
+        }
+
+        const w = parseFloat(paperWidthEl.value);
+        const h = parseFloat(paperHeightEl.value);
+        const outer = parseFloat(outerMarginEl.value);
+        const maxOuter = Number.isFinite(w) && Number.isFinite(h) ? Math.max(0, (Math.min(w, h) / 2) - 0.1) : 0;
+        if (!Number.isFinite(outer) || outer < 0 || outer > maxOuter) {
+            outerMarginEl.value = 10;
+        }
+
+        this.checkForCustomSize();
+        this.validateAllImages();
     }
 
     async createPreviewDataUrl(file, options = {}) {
@@ -239,6 +272,17 @@ class FitPrint {
             const size = paperSizes[selectedSize];
             document.getElementById('paperWidth').value = size.width;
             document.getElementById('paperHeight').value = size.height;
+
+            // If the current outer margin is invalid for this preset (or was set to something huge),
+            // reset it to a sane default so users don't get negative printable areas.
+            const outerMarginInput = document.getElementById('outerMargin');
+            if (outerMarginInput) {
+                const currentOuter = parseFloat(outerMarginInput.value);
+                const maxOuter = Math.max(0, (Math.min(size.width, size.height) / 2) - 0.1);
+                if (!Number.isFinite(currentOuter) || currentOuter > maxOuter) {
+                    outerMarginInput.value = 10;
+                }
+            }
             
             // Trigger validation after changing paper size
             this.validateAllImages();
@@ -374,6 +418,8 @@ class FitPrint {
         const paperWidth = parseFloat(document.getElementById('paperWidth').value);
         const paperHeight = parseFloat(document.getElementById('paperHeight').value);
         const outerMargin = parseFloat(document.getElementById('outerMargin').value);
+
+        const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
         
         const printableWidth = paperWidth - (2 * outerMargin);
         const printableHeight = paperHeight - (2 * outerMargin);
@@ -382,6 +428,16 @@ class FitPrint {
         if (!config) return; // Safety check
         
         const existingWarning = config.querySelector('.size-warning');
+
+        if (paperIssue) {
+            if (existingWarning) existingWarning.remove();
+            config.classList.add('oversized');
+            const warning = document.createElement('div');
+            warning.className = 'size-warning';
+            warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> ${paperIssue}`;
+            config.appendChild(warning);
+            return;
+        }
         
         const canFitNormal = image.width <= printableWidth && image.height <= printableHeight;
         const canFitRotated = image.height <= printableWidth && image.width <= printableHeight;
@@ -392,7 +448,9 @@ class FitPrint {
                 config.classList.add('oversized');
                 const warning = document.createElement('div');
                 warning.className = 'size-warning';
-                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${Math.max(printableWidth, printableHeight).toFixed(1)}×${Math.min(printableWidth, printableHeight).toFixed(1)}mm`;
+                const maxW = Math.max(0, Math.max(printableWidth, printableHeight));
+                const maxH = Math.max(0, Math.min(printableWidth, printableHeight));
+                warning.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Too large for paper! Max: ${maxW.toFixed(1)}×${maxH.toFixed(1)}mm`;
                 config.appendChild(warning);
             }
         } else {
@@ -402,6 +460,26 @@ class FitPrint {
                 config.classList.remove('oversized');
             }
         }
+    }
+
+    getPaperSettingsIssue(paperWidth, paperHeight, outerMargin) {
+        if (!Number.isFinite(paperWidth) || !Number.isFinite(paperHeight) || !Number.isFinite(outerMargin)) {
+            return 'Invalid paper settings.';
+        }
+        if (paperWidth <= 0 || paperHeight <= 0) {
+            return 'Paper width/height must be greater than 0.';
+        }
+        if (outerMargin < 0) {
+            return 'Outer margin cannot be negative.';
+        }
+
+        const printableWidth = paperWidth - (2 * outerMargin);
+        const printableHeight = paperHeight - (2 * outerMargin);
+        if (printableWidth <= 0 || printableHeight <= 0) {
+            return `Outer margin is too large for the selected paper size (printable area would be ${printableWidth.toFixed(1)}×${printableHeight.toFixed(1)}mm). Reduce the outer margin or increase paper size.`;
+        }
+
+        return null;
     }
 
     // Selection and Bulk Edit Methods
@@ -798,16 +876,38 @@ class FitPrint {
         const paperHeight = parseFloat(document.getElementById('paperHeight').value);
         const outerMargin = parseFloat(document.getElementById('outerMargin').value);
         const innerMargin = parseFloat(document.getElementById('innerMargin').value);
+        const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
+
+        const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
+        if (paperIssue) {
+            alert(paperIssue);
+            return;
+        }
 
         // Calculate printable area
         const printableWidth = paperWidth - (2 * outerMargin);
         const printableHeight = paperHeight - (2 * outerMargin);
 
         // Validate that all images can fit on the paper
+        // (If rotation is disabled, they must fit in their current orientation.)
         const oversizedImages = this.validateImageSizes(printableWidth, printableHeight);
         if (oversizedImages.length > 0) {
             this.showOversizedWarning(oversizedImages, printableWidth, printableHeight);
             return;
+        }
+
+        if (!allowRotation) {
+            const requiresRotation = this.images.filter(img => img.width > printableWidth || img.height > printableHeight);
+            if (requiresRotation.length > 0) {
+                let warningMessage = `WARNING: Rotation is disabled, but some images only fit when rotated:\n\n`;
+                warningMessage += `Printable area: ${printableWidth.toFixed(1)}mm × ${printableHeight.toFixed(1)}mm\n\n`;
+                requiresRotation.forEach(img => {
+                    warningMessage += `• ${img.name}: ${img.width.toFixed(1)}mm × ${img.height.toFixed(1)}mm\n`;
+                });
+                warningMessage += `\nEnable “Allow Rotation” or reduce the size.`;
+                alert(warningMessage);
+                return;
+            }
         }
 
         // Expand images based on copies
@@ -823,7 +923,7 @@ class FitPrint {
         });
 
         // Apply smart packing algorithm
-        this.layout = this.packImages(allImages, printableWidth, printableHeight, innerMargin);
+        this.layout = this.packImages(allImages, printableWidth, printableHeight, innerMargin, allowRotation);
         
         this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
         this.lastPreviewParams = { paperWidth, paperHeight, outerMargin };
@@ -834,6 +934,15 @@ class FitPrint {
 
     validateImageSizes(printableWidth, printableHeight) {
         const oversizedImages = [];
+
+        // If printable area is invalid, treat all images as oversized.
+        if (!Number.isFinite(printableWidth) || !Number.isFinite(printableHeight) || printableWidth <= 0 || printableHeight <= 0) {
+            return this.images.map(img => ({
+                ...img,
+                maxWidth: 0,
+                maxHeight: 0
+            }));
+        }
         
         this.images.forEach(img => {
             const canFitNormal = img.width <= printableWidth && img.height <= printableHeight;
@@ -842,8 +951,8 @@ class FitPrint {
             if (!canFitNormal && !canFitRotated) {
                 oversizedImages.push({
                     ...img,
-                    maxWidth: Math.max(printableWidth, printableHeight),
-                    maxHeight: Math.min(printableWidth, printableHeight)
+                    maxWidth: Math.max(0, Math.max(printableWidth, printableHeight)),
+                    maxHeight: Math.max(0, Math.min(printableWidth, printableHeight))
                 });
             }
         });
@@ -853,11 +962,13 @@ class FitPrint {
 
     showOversizedWarning(oversizedImages, printableWidth, printableHeight) {
         let warningMessage = `WARNING: The following images are too large to fit on the paper:\n\n`;
-        warningMessage += `Printable area: ${printableWidth.toFixed(1)}mm × ${printableHeight.toFixed(1)}mm\n\n`;
+        warningMessage += `Printable area: ${Math.max(0, printableWidth).toFixed(1)}mm × ${Math.max(0, printableHeight).toFixed(1)}mm\n\n`;
         
         oversizedImages.forEach(img => {
             warningMessage += `• ${img.name}: ${img.width.toFixed(1)}mm × ${img.height.toFixed(1)}mm\n`;
-            warningMessage += `  Max size (any orientation): ${Math.max(printableWidth, printableHeight).toFixed(1)}mm × ${Math.min(printableWidth, printableHeight).toFixed(1)}mm\n\n`;
+            const maxW = Math.max(0, Math.max(printableWidth, printableHeight));
+            const maxH = Math.max(0, Math.min(printableWidth, printableHeight));
+            warningMessage += `  Max size (any orientation): ${maxW.toFixed(1)}mm × ${maxH.toFixed(1)}mm\n\n`;
         });
         
         warningMessage += `Please reduce the size of these images or increase the paper size/reduce margins.`;
@@ -886,55 +997,424 @@ class FitPrint {
         });
     }
 
-    packImages(images, pageWidth, pageHeight, margin) {
-        // Sort images by area (largest first) for better packing efficiency
-        const sortedImages = [...images].sort((a, b) => (b.width * b.height) - (a.width * a.height));
-        
+    // Deterministic 2D rectangle packing (Skyline Bottom-Left).
+    // Why Skyline:
+    // - Much simpler than MaxRects
+    // - Produces very "tidy" looking rows/columns
+    // - Efficient for gang-sheet style layouts
+    // Rotation is used only when it improves fit (and is never random).
+    packImages(images, pageWidth, pageHeight, margin, allowRotation = true) {
+        const eps = 1e-6;
+
+        // Sort for packing efficiency and stability (deterministic)
+        const sorted = [...images].sort((a, b) => {
+            const aArea = a.width * a.height;
+            const bArea = b.width * b.height;
+            if (bArea !== aArea) return bArea - aArea;
+            const aMax = Math.max(a.width, a.height);
+            const bMax = Math.max(b.width, b.height);
+            if (bMax !== aMax) return bMax - aMax;
+            return String(a.name).localeCompare(String(b.name));
+        });
+
+        const createPage = () => ({
+            images: [],
+            _skyline: [{ x: 0, y: 0, width: pageWidth }]
+        });
+
         const pages = [];
-        let currentPageIndex = 0;
-        
-        for (const image of sortedImages) {
-            let placed = false;
-            
-            // Try to place on existing pages first
-            for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
-                const placement = this.findBestPlacementOnPage(image, pages[pageIndex], pageWidth, pageHeight, margin);
-                if (placement) {
-                    pages[pageIndex].images.push({
-                        ...image,
-                        x: placement.x,
-                        y: placement.y,
-                        width: placement.width,
-                        height: placement.height,
-                        rotated: placement.rotated
-                    });
-                    placed = true;
-                    break;
-                }
+        const tryPlaceOnPage = (page, img, rotationAllowed) => {
+            const placement = this.skylineFindBestPosition(page._skyline, img, pageWidth, pageHeight, margin, rotationAllowed);
+            if (!placement) return false;
+
+            this.skylineAddLevel(page._skyline, placement.x, placement.y, placement.reserveWidth, placement.reserveHeight, eps);
+            page.images.push({
+                ...img,
+                x: placement.x,
+                y: placement.y,
+                width: placement.placedWidth,
+                height: placement.placedHeight,
+                rotated: placement.rotated
+            });
+            return true;
+        };
+
+        const tryPlaceOnExistingPages = (img, rotationAllowed) => {
+            for (const page of pages) {
+                if (tryPlaceOnPage(page, img, rotationAllowed)) return true;
             }
-            
-            // If not placed on existing pages, create a new page
-            if (!placed) {
-                const newPage = { images: [] };
-                const placement = this.findBestPlacementOnPage(image, newPage, pageWidth, pageHeight, margin);
-                
-                if (placement) {
-                    newPage.images.push({
-                        ...image,
-                        x: placement.x,
-                        y: placement.y,
-                        width: placement.width,
-                        height: placement.height,
-                        rotated: placement.rotated
-                    });
-                    pages.push(newPage);
-                } else {
-                    console.error('Image too large to fit on page:', image);
+            return false;
+        };
+
+        const placeOnNewPage = (img, rotationAllowed) => {
+            const page = createPage();
+            if (!tryPlaceOnPage(page, img, rotationAllowed)) return false;
+            pages.push(page);
+            return true;
+        };
+
+        for (const img of sorted) {
+            // 1) Prefer unrotated on existing pages.
+            if (tryPlaceOnExistingPages(img, false)) continue;
+
+            // 2) If rotation is enabled, try rotated ONLY to avoid starting a new page.
+            if (allowRotation && tryPlaceOnExistingPages(img, true)) continue;
+
+            // 3) Start a new page (unrotated).
+            if (placeOnNewPage(img, false)) continue;
+
+            // 4) If unrotated won't even fit on an empty page, allow rotation on a new page.
+            if (allowRotation && placeOnNewPage(img, true)) continue;
+
+            console.error('Image too large to fit on page:', img);
+        }
+
+        // Strip internal packing state
+        for (const page of pages) {
+            delete page._skyline;
+        }
+
+        return pages;
+    }
+
+    skylineFindBestPosition(skyline, image, pageWidth, pageHeight, margin, allowRotation) {
+        const eps = 1e-6;
+        const orientations = [
+            { w: image.width, h: image.height, rotated: false }
+        ];
+        if (allowRotation) orientations.push({ w: image.height, h: image.width, rotated: true });
+
+        let best = null;
+        for (const o of orientations) {
+            for (let i = 0; i < skyline.length; i++) {
+                const x = skyline[i].x;
+
+                // Default: reserve trailing spacing on right/bottom.
+                // If we are up against an edge, we allow dropping the trailing margin.
+                let reserveW = o.w + margin;
+                if (x + reserveW > pageWidth + eps && x + o.w <= pageWidth + eps) {
+                    reserveW = o.w;
+                }
+
+                const fit = this.skylineFindMinY(skyline, i, reserveW, pageWidth, eps);
+                if (!fit) continue;
+
+                let reserveH = o.h + margin;
+                if (fit.y + reserveH > pageHeight + eps && fit.y + o.h <= pageHeight + eps) {
+                    reserveH = o.h;
+                }
+
+                if (fit.y + reserveH > pageHeight + eps) continue;
+
+                const rotationPenalty = o.rotated ? 1 : 0;
+                const bottom = fit.y + reserveH;
+
+                const candidate = {
+                    x,
+                    y: fit.y,
+                    placedWidth: o.w,
+                    placedHeight: o.h,
+                    reserveWidth: reserveW,
+                    reserveHeight: reserveH,
+                    rotated: o.rotated,
+                    scoreY: fit.y,
+                    scoreX: x,
+                    scoreRot: rotationPenalty,
+                    scoreBottom: bottom
+                };
+
+                if (!best) {
+                    best = candidate;
+                    continue;
+                }
+
+                // Bottom-left: minimize y, then x.
+                if (candidate.scoreY !== best.scoreY) {
+                    if (candidate.scoreY < best.scoreY) best = candidate;
+                    continue;
+                }
+                if (candidate.scoreX !== best.scoreX) {
+                    if (candidate.scoreX < best.scoreX) best = candidate;
+                    continue;
+                }
+                if (candidate.scoreRot !== best.scoreRot) {
+                    if (candidate.scoreRot < best.scoreRot) best = candidate;
+                    continue;
+                }
+                if (candidate.scoreBottom !== best.scoreBottom) {
+                    if (candidate.scoreBottom < best.scoreBottom) best = candidate;
+                    continue;
                 }
             }
         }
-        
-        return pages;
+
+        return best;
+    }
+
+    skylineFindMinY(skyline, startIndex, width, pageWidth, eps) {
+        const startX = skyline[startIndex].x;
+        if (startX + width > pageWidth + eps) return null;
+
+        let y = skyline[startIndex].y;
+        let widthLeft = width;
+        let i = startIndex;
+        while (widthLeft > eps) {
+            y = Math.max(y, skyline[i].y);
+            widthLeft -= skyline[i].width;
+            i += 1;
+            if (i >= skyline.length && widthLeft > eps) return null;
+        }
+
+        return { x: startX, y };
+    }
+
+    skylineAddLevel(skyline, x, y, width, height, eps) {
+        // Insert new node
+        const newNode = { x, y: y + height, width };
+
+        // Find insertion index
+        let index = 0;
+        while (index < skyline.length && skyline[index].x < x - eps) index++;
+        skyline.splice(index, 0, newNode);
+
+        // Remove/trim any nodes that overlap the new node horizontally
+        for (let i = index + 1; i < skyline.length; i++) {
+            const node = skyline[i];
+            const prev = skyline[i - 1];
+            const prevRight = prev.x + prev.width;
+
+            if (node.x >= prevRight - eps) break;
+
+            const shrink = prevRight - node.x;
+            node.x += shrink;
+            node.width -= shrink;
+            if (node.width <= eps) {
+                skyline.splice(i, 1);
+                i--;
+            }
+        }
+
+        // Merge adjacent nodes with the same y
+        for (let i = 0; i < skyline.length - 1; i++) {
+            if (Math.abs(skyline[i].y - skyline[i + 1].y) <= eps) {
+                skyline[i].width += skyline[i + 1].width;
+                skyline.splice(i + 1, 1);
+                i--;
+            }
+        }
+    }
+
+    maxRectsPlace(page, image, margin, allowRotation) {
+        if (!page._freeRects) page._freeRects = [{ x: 0, y: 0, width: Infinity, height: Infinity }];
+
+        const binW = Number.isFinite(page._binWidth) ? page._binWidth : Infinity;
+        const binH = Number.isFinite(page._binHeight) ? page._binHeight : Infinity;
+        const best = this.maxRectsFindPosition(page._freeRects, image, margin, allowRotation, binW, binH);
+        if (!best) return false;
+
+        // Reserve margin on right/bottom by packing with inflated dimensions.
+        const packedRect = {
+            x: best.x,
+            y: best.y,
+            width: best.packedWidth,
+            height: best.packedHeight
+        };
+
+        // Update free rects by splitting any nodes that intersect the placed rect
+        const newFree = [];
+        for (const free of page._freeRects) {
+            if (!this.rectanglesOverlap(packedRect, free)) {
+                newFree.push(free);
+                continue;
+            }
+
+            // Split free rect into up to 4 rects around the placed rect
+            // Above
+            if (packedRect.y > free.y) {
+                newFree.push({
+                    x: free.x,
+                    y: free.y,
+                    width: free.width,
+                    height: packedRect.y - free.y
+                });
+            }
+            // Below
+            const freeBottom = free.y + free.height;
+            const placedBottom = packedRect.y + packedRect.height;
+            if (placedBottom < freeBottom) {
+                newFree.push({
+                    x: free.x,
+                    y: placedBottom,
+                    width: free.width,
+                    height: freeBottom - placedBottom
+                });
+            }
+            // Left
+            if (packedRect.x > free.x) {
+                const leftWidth = packedRect.x - free.x;
+                const top = Math.max(free.y, packedRect.y);
+                const bottom = Math.min(free.y + free.height, packedRect.y + packedRect.height);
+                const h = bottom - top;
+                if (h > 0 && leftWidth > 0) {
+                    newFree.push({ x: free.x, y: top, width: leftWidth, height: h });
+                }
+            }
+            // Right
+            const freeRight = free.x + free.width;
+            const placedRight = packedRect.x + packedRect.width;
+            if (placedRight < freeRight) {
+                const rightWidth = freeRight - placedRight;
+                const top = Math.max(free.y, packedRect.y);
+                const bottom = Math.min(free.y + free.height, packedRect.y + packedRect.height);
+                const h = bottom - top;
+                if (h > 0 && rightWidth > 0) {
+                    newFree.push({ x: placedRight, y: top, width: rightWidth, height: h });
+                }
+            }
+        }
+
+        page._freeRects = this.maxRectsPruneFreeList(newFree);
+
+        page.images.push({
+            ...image,
+            x: best.x,
+            y: best.y,
+            width: best.placedWidth,
+            height: best.placedHeight,
+            rotated: best.rotated
+        });
+
+        return true;
+    }
+
+    maxRectsFindPosition(freeRects, image, margin, allowRotation, binWidth, binHeight) {
+        const orientations = [];
+        orientations.push({
+            placedWidth: image.width,
+            placedHeight: image.height,
+            packedWidth: image.width + margin,
+            packedHeight: image.height + margin,
+            rotated: false
+        });
+        if (allowRotation) {
+            orientations.push({
+                placedWidth: image.height,
+                placedHeight: image.width,
+                packedWidth: image.height + margin,
+                packedHeight: image.width + margin,
+                rotated: true
+            });
+        }
+
+        let best = null;
+        for (const free of freeRects) {
+            for (const o of orientations) {
+                // Allow placements that fit exactly at the edge without forcing a trailing margin.
+                // If there's not enough remaining space for the margin, drop the trailing margin.
+                let packedW = o.packedWidth;
+                let packedH = o.packedHeight;
+
+                // If width fits but width+margin doesn't, allow packing without the trailing margin.
+                if (o.placedWidth <= free.width && packedW > free.width) {
+                    packedW = o.placedWidth;
+                }
+                if (o.placedHeight <= free.height && packedH > free.height) {
+                    packedH = o.placedHeight;
+                }
+
+                if (packedW > free.width || packedH > free.height) continue;
+
+                const leftoverH = free.width - packedW;
+                const leftoverV = free.height - packedH;
+                const shortSide = Math.min(leftoverH, leftoverV);
+                const longSide = Math.max(leftoverH, leftoverV);
+
+                // Rotation penalty keeps things visually consistent when both fit.
+                const rotationPenalty = o.rotated ? 1 : 0;
+
+                const candidate = {
+                    x: free.x,
+                    y: free.y,
+                    placedWidth: o.placedWidth,
+                    placedHeight: o.placedHeight,
+                    packedWidth: packedW,
+                    packedHeight: packedH,
+                    rotated: o.rotated,
+                    scoreShortSide: shortSide,
+                    scoreLongSide: longSide,
+                    scoreRotation: rotationPenalty
+                };
+
+                if (!best) {
+                    best = candidate;
+                    continue;
+                }
+
+                if (candidate.scoreShortSide !== best.scoreShortSide) {
+                    if (candidate.scoreShortSide < best.scoreShortSide) best = candidate;
+                    continue;
+                }
+                if (candidate.scoreLongSide !== best.scoreLongSide) {
+                    if (candidate.scoreLongSide < best.scoreLongSide) best = candidate;
+                    continue;
+                }
+                if (candidate.scoreRotation !== best.scoreRotation) {
+                    if (candidate.scoreRotation < best.scoreRotation) best = candidate;
+                    continue;
+                }
+                // Stable tie-break for an organized look: top-left first
+                if (candidate.y !== best.y) {
+                    if (candidate.y < best.y) best = candidate;
+                    continue;
+                }
+                if (candidate.x !== best.x) {
+                    if (candidate.x < best.x) best = candidate;
+                    continue;
+                }
+            }
+        }
+
+        return best;
+    }
+
+    maxRectsPruneFreeList(freeRects) {
+        // Remove empty/invalid rects
+        const list = freeRects.filter(r => r.width > 0 && r.height > 0);
+
+        // Remove rects that are fully contained in another rect
+        const pruned = [];
+        for (let i = 0; i < list.length; i++) {
+            const a = list[i];
+            let contained = false;
+            for (let j = 0; j < list.length; j++) {
+                if (i === j) continue;
+                const b = list[j];
+                if (this.rectContains(b, a)) {
+                    contained = true;
+                    break;
+                }
+            }
+            if (!contained) pruned.push(a);
+        }
+
+        // Deterministic order to keep behavior stable
+        pruned.sort((r1, r2) => {
+            if (r1.y !== r2.y) return r1.y - r2.y;
+            if (r1.x !== r2.x) return r1.x - r2.x;
+            if (r1.width !== r2.width) return r1.width - r2.width;
+            return r1.height - r2.height;
+        });
+
+        return pruned;
+    }
+
+    rectContains(outer, inner) {
+        return (
+            inner.x >= outer.x &&
+            inner.y >= outer.y &&
+            inner.x + inner.width <= outer.x + outer.width &&
+            inner.y + inner.height <= outer.y + outer.height
+        );
     }
 
     findBestPlacementOnPage(image, page, pageWidth, pageHeight, margin) {
@@ -1165,7 +1645,6 @@ class FitPrint {
             const scale = previewWidth / paperWidth;
 
             pageDiv.innerHTML = `
-                <div class="page-title">Page ${index + 1}</div>
                 <div class="page-content" style="width: ${previewWidth}px; height: ${previewHeight}px; overflow: hidden; position: relative;">
                 </div>
             `;

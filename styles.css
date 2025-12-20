@@ -1173,6 +1173,7 @@ body.shift-selecting .select-checkbox {
     position: relative;
     max-width: 95vw;
     max-height: 95vh;
+    padding-top: 44px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1181,8 +1182,8 @@ body.shift-selecting .select-checkbox {
 
 .modal-close {
     position: absolute;
-    top: -40px;
-    right: 0;
+    top: 8px;
+    right: 8px;
     background: rgba(255, 255, 255, 0.9);
     border: none;
     border-radius: 50%;
@@ -1205,8 +1206,8 @@ body.shift-selecting .select-checkbox {
 }
 
 .modal-image {
-    max-width: 100%;
-    max-height: 85vh;
+    max-width: 92vw;
+    max-height: 78vh;
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
