@@ -257,6 +257,17 @@ h2 {
     color: #888;
 }
 
+.upload-status {
+    margin-top: 4px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.06);
+    border: 1px solid rgba(220, 38, 38, 0.18);
+}
+
 .paste-info {
     font-size: 0.85rem;
     color: #3b82f6;
@@ -584,6 +595,12 @@ h2 {
 .quick-select-btn.select-none:hover {
     background: #fef2f2;
     border-color: #f87171;
+    color: #dc2626;
+}
+
+.quick-select-btn.crop:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
     color: #dc2626;
 }
 
@@ -1055,6 +1072,7 @@ h2 {
     background: #059669;
     border-color: #059669;
 }
+
 
 .action-btn:disabled {
     opacity: 0.5;

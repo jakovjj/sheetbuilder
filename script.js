@@ -16,9 +16,28 @@ class SheetBuilder {
             inProgress: false,
             abortController: null
         };
+        this._uploadFeedback = {
+            token: 0,
+            hideTimer: null
+        };
         this.initializeEventListeners();
         this.ensureDefaultPaperSettings();
         this.initializeUnits();
+    }
+
+    getUploadStatusEl() {
+        return document.getElementById('uploadStatus');
+    }
+
+    setUploadStatus(text, { visible } = {}) {
+        const el = this.getUploadStatusEl();
+        if (!el) return;
+        if (typeof text === 'string') {
+            el.textContent = text;
+        }
+        if (typeof visible === 'boolean') {
+            el.hidden = !visible;
+        }
     }
 
     getExportUi() {
@@ -436,6 +455,7 @@ class SheetBuilder {
         const generateBtn = document.getElementById('generateLayout');
         const exportBtn = document.getElementById('exportPDF');
         const exportBtnBottom = document.getElementById('exportPDFBottom');
+        const quickCropImagesBtn = document.getElementById('quickCropImages');
         const paperSize = document.getElementById('paperSize');
         const cancelExportBtn = document.getElementById('cancelExport');
         const fillUntilPagesEnabled = document.getElementById('fillUntilPagesEnabled');
@@ -467,6 +487,21 @@ class SheetBuilder {
         exportBtn.addEventListener('click', () => this.exportToPDF());
         if (exportBtnBottom) exportBtnBottom.addEventListener('click', () => this.exportToPDF());
         paperSize.addEventListener('change', (e) => this.handlePaperSizeChange(e));
+
+        if (quickCropImagesBtn) {
+            quickCropImagesBtn.addEventListener('click', async () => {
+                if (quickCropImagesBtn.disabled) return;
+                const previous = quickCropImagesBtn.innerHTML;
+                quickCropImagesBtn.disabled = true;
+                quickCropImagesBtn.textContent = 'Cropping…';
+                try {
+                    await this.cropAllImagesTransparentPadding();
+                } finally {
+                    quickCropImagesBtn.disabled = false;
+                    quickCropImagesBtn.innerHTML = previous;
+                }
+            });
+        }
 
         if (fillUntilPagesInput) {
             fillUntilPagesInput.addEventListener('input', () => {
@@ -1120,6 +1155,35 @@ class SheetBuilder {
             return;
         }
 
+        // Upload feedback: show progress so users know the app is working.
+        this._uploadFeedback.token += 1;
+        const uploadToken = this._uploadFeedback.token;
+        if (this._uploadFeedback.hideTimer) {
+            window.clearTimeout(this._uploadFeedback.hideTimer);
+            this._uploadFeedback.hideTimer = null;
+        }
+        const total = imageFiles.length;
+        let completed = 0;
+        let failed = 0;
+        const updateStatus = (final = false) => {
+            if (this._uploadFeedback.token !== uploadToken) return;
+            if (final) {
+                if (failed > 0) {
+                    this.setUploadStatus(`Added ${total - failed}/${total} images (some failed).`, { visible: true });
+                } else {
+                    this.setUploadStatus(`Added ${total} image${total === 1 ? '' : 's'}.`, { visible: true });
+                }
+                this._uploadFeedback.hideTimer = window.setTimeout(() => {
+                    if (this._uploadFeedback.token !== uploadToken) return;
+                    this.setUploadStatus('', { visible: false });
+                }, 1400);
+                return;
+            }
+            this.setUploadStatus(`Loading ${completed}/${total} image${total === 1 ? '' : 's'}…`, { visible: true });
+        };
+
+        updateStatus(false);
+
         this.markLayoutStale({ resetFillUntilPages: false });
 
         imageFiles.forEach((file, index) => {
@@ -1160,11 +1224,196 @@ class SheetBuilder {
                             this.scheduleLayoutPreviewRerender();
                         }
                     });
+
+                    completed += 1;
+                    updateStatus(completed >= total);
+                };
+                img.onerror = () => {
+                    failed += 1;
+                    completed += 1;
+                    updateStatus(completed >= total);
                 };
                 img.src = e.target.result;
             };
+            reader.onerror = () => {
+                failed += 1;
+                completed += 1;
+                updateStatus(completed >= total);
+            };
             reader.readAsDataURL(file);
         });
+    }
+
+    async loadImageElement(src) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.src = src;
+        try {
+            if (img.decode) {
+                await img.decode();
+            } else {
+                await new Promise((resolve, reject) => {
+                    img.onload = resolve;
+                    img.onerror = reject;
+                });
+            }
+        } catch (e) {
+            throw e;
+        }
+        return img;
+    }
+
+    computeTransparentPaddingCropBounds(imageData, width, height, options = {}) {
+        const {
+            alphaThreshold = 8,
+            maxNonTransparentRatio = 0.01
+        } = options;
+
+        if (!imageData || width <= 0 || height <= 0) return null;
+        const data = imageData.data;
+        if (!data || data.length < width * height * 4) return null;
+
+        const maxNonTransparentPerRow = Math.max(0, Math.floor(width * maxNonTransparentRatio));
+        const maxNonTransparentPerCol = Math.max(0, Math.floor(height * maxNonTransparentRatio));
+
+        const rowIsMostlyTransparent = (y) => {
+            let nonTransparent = 0;
+            let idx = (y * width * 4) + 3;
+            for (let x = 0; x < width; x++) {
+                if (data[idx] > alphaThreshold) {
+                    nonTransparent++;
+                    if (nonTransparent > maxNonTransparentPerRow) return false;
+                }
+                idx += 4;
+            }
+            return true;
+        };
+
+        const colIsMostlyTransparent = (x, top, bottom) => {
+            let nonTransparent = 0;
+            for (let y = top; y <= bottom; y++) {
+                const idx = ((y * width + x) * 4) + 3;
+                if (data[idx] > alphaThreshold) {
+                    nonTransparent++;
+                    if (nonTransparent > maxNonTransparentPerCol) return false;
+                }
+            }
+            return true;
+        };
+
+        let top = 0;
+        while (top < height && rowIsMostlyTransparent(top)) top++;
+        if (top >= height) return null; // fully transparent
+
+        let bottom = height - 1;
+        while (bottom >= top && rowIsMostlyTransparent(bottom)) bottom--;
+
+        let left = 0;
+        while (left < width && colIsMostlyTransparent(left, top, bottom)) left++;
+
+        let right = width - 1;
+        while (right >= left && colIsMostlyTransparent(right, top, bottom)) right--;
+
+        const cropW = right - left + 1;
+        const cropH = bottom - top + 1;
+        if (cropW <= 0 || cropH <= 0) return null;
+
+        // No-op crop.
+        if (left === 0 && top === 0 && cropW === width && cropH === height) return null;
+
+        return { x: left, y: top, width: cropW, height: cropH };
+    }
+
+    async cropImageDataUrlTransparentPadding(dataUrl, options = {}) {
+        const img = await this.loadImageElement(dataUrl);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, img.naturalWidth || img.width || 1);
+        canvas.height = Math.max(1, img.naturalHeight || img.height || 1);
+
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return null;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const bounds = this.computeTransparentPaddingCropBounds(imageData, canvas.width, canvas.height, options);
+        if (!bounds) return null;
+
+        const out = document.createElement('canvas');
+        out.width = bounds.width;
+        out.height = bounds.height;
+        const outCtx = out.getContext('2d');
+        if (!outCtx) return null;
+
+        outCtx.clearRect(0, 0, out.width, out.height);
+        outCtx.drawImage(canvas, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, bounds.width, bounds.height);
+
+        return {
+            dataUrl: out.toDataURL('image/png'),
+            width: bounds.width,
+            height: bounds.height
+        };
+    }
+
+    async cropAllImagesTransparentPadding() {
+        if (!this.images || this.images.length === 0) {
+            alert('Please upload some images first!');
+            return;
+        }
+
+        const options = {
+            // Treat alpha <= 8 as transparent.
+            alphaThreshold: 8,
+            // Allow a small amount of noise: rows/cols with <= 1% non-transparent pixels are trimmed.
+            maxNonTransparentRatio: 0.01
+        };
+
+        let changed = 0;
+
+        for (const img of this.images) {
+            if (!img?.dataUrl) continue;
+
+            const originalPixelW = Number(img.originalWidth) || 0;
+            const originalPixelH = Number(img.originalHeight) || 0;
+
+            let result = null;
+            try {
+                result = await this.cropImageDataUrlTransparentPadding(img.dataUrl, options);
+            } catch {
+                result = null;
+            }
+
+            if (!result) continue;
+
+            // Preserve the physical scale of the actual artwork: shrink mm size proportionally
+            // to the pixel crop so the visible content doesn't get enlarged.
+            const widthMmPerPx = (Number.isFinite(img.width) && originalPixelW > 0) ? (img.width / originalPixelW) : null;
+            const heightMmPerPx = (Number.isFinite(img.height) && originalPixelH > 0) ? (img.height / originalPixelH) : null;
+
+            img.dataUrl = result.dataUrl;
+            img.previewDataUrl = null;
+            img.originalWidth = result.width;
+            img.originalHeight = result.height;
+            img.aspectRatio = result.width / result.height;
+
+            if (widthMmPerPx !== null) {
+                img.width = widthMmPerPx * result.width;
+            }
+            if (heightMmPerPx !== null) {
+                img.height = heightMmPerPx * result.height;
+            } else if (widthMmPerPx !== null) {
+                img.height = img.width / img.aspectRatio;
+            }
+
+            changed += 1;
+        }
+
+        if (changed > 0) {
+            this.rerenderAllImageConfigs();
+            this.validateAllImages();
+            this.markLayoutStale({ resetFillUntilPages: true });
+        }
     }
 
     generateLayout() {

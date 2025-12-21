@@ -4,6 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SheetBuilder - Smart Image Layout for Printing (Gang Sheets, DTF and more)</title>
+    <meta name="description" content="Free smart image layout tool for gang sheets, DTF and more. Upload images, set sizes & copies, generate an efficient layout, then export to PDF.">
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- Canonical (replace with your production URL) -->
+    <link rel="canonical" href="https://sheetbuilder.net/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="SheetBuilder - Smart Image Layout for Printing">
+    <meta property="og:description" content="Free smart image layout tool for gang sheets, DTF and more. Generate an efficient layout and export to PDF.">
+    <meta property="og:url" content="https://sheetbuilder.net/">
+    <meta property="og:image" content="https://sheetbuilder.net/logo.png">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="SheetBuilder - Smart Image Layout for Printing">
+    <meta name="twitter:description" content="Free smart image layout tool for gang sheets, DTF and more. Generate an efficient layout and export to PDF.">
+    <meta name="twitter:image" content="https://sheetbuilder.net/logo.png">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -12,6 +31,30 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <!-- Structured data (update url as needed) -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "SheetBuilder",
+            "url": "https://sheetbuilder.net/",
+            "applicationCategory": "DesignApplication",
+            "operatingSystem": "Web",
+            "description": "Free smart image layout tool for gang sheets, DTF and more. Upload images, set sizes & copies, generate an efficient layout, then export to PDF.",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "publisher": { "@type": "Organization", "name": "Glare Studios" }
+        }
+    </script>
+
+    <!-- GA4 (optional): replace G-XXXXXXXXXX with your Measurement ID -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMKM4C2Q8J"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WMKM4C2Q8J');
+    </script>
 </head>
 <body>
     <header class="site-header">
@@ -40,7 +83,7 @@
             <section id="howto" class="intro-section">
                 <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-circle-info"></i></span>How to use SheetBuilder</h2>
                 <div class="howto-content">
-                    <p class="howto-paragraph">Upload your images, set each image size (<span class="unit-label" data-unit-label>mm</span>) and copies (or use Bulk Edit), then choose your paper size and margins. When you’re ready, click Generate Layout and then Export to PDF.</p>
+                    <p class="howto-paragraph">Upload your images, set each image size (<span class="unit-label" data-unit-label>mm</span>) and copies (or use Bulk Edit), then choose your paper size and margins. When you’re ready, click Generate Layout and then Export to PDF. Feel free to contact jakov@jandric.com for support or feature requests.</p>
                 </div>
             </section>
 
@@ -56,6 +99,7 @@
                         <p>Drag & drop images here, click to browse, or paste from clipboard</p>
                         <p class="upload-formats">Supports: JPG, PNG, GIF, WEBP</p>
                     </div>
+                    <div id="uploadStatus" class="upload-status" hidden aria-live="polite"></div>
                 </div>
             </section>
 
@@ -108,6 +152,10 @@
                             <button id="quickSelectNone" class="quick-select-btn select-none">
                                 <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-square"></i></span>
                                 <span>Select None</span>
+                            </button>
+                            <button id="quickCropImages" class="quick-select-btn crop" type="button">
+                                <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-crop-simple"></i></span>
+                                <span>Crop transparent padding</span>
                             </button>
                         </div>
                     </div>
