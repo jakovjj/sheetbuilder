@@ -892,6 +892,17 @@ h2 {
     text-decoration: underline;
 }
 
+.footer-info p.footer-support {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #dc2626;
+}
+
+.footer-info p.footer-support a {
+    color: inherit;
+    font-weight: 900;
+}
+
 .paypal-btn {
     background: #28a745; /* Green background */
     color: white;
