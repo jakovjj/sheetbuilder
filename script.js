@@ -435,8 +435,11 @@ class SheetBuilder {
         const imageInput = document.getElementById('imageInput');
         const generateBtn = document.getElementById('generateLayout');
         const exportBtn = document.getElementById('exportPDF');
+        const exportBtnBottom = document.getElementById('exportPDFBottom');
         const paperSize = document.getElementById('paperSize');
         const cancelExportBtn = document.getElementById('cancelExport');
+        const fillUntilPagesEnabled = document.getElementById('fillUntilPagesEnabled');
+        const fillUntilPagesInput = document.getElementById('fillUntilPages');
         
         // Paper setting inputs for real-time validation
         const paperWidth = document.getElementById('paperWidth');
@@ -462,7 +465,32 @@ class SheetBuilder {
         imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
         generateBtn.addEventListener('click', () => this.generateLayout());
         exportBtn.addEventListener('click', () => this.exportToPDF());
+        if (exportBtnBottom) exportBtnBottom.addEventListener('click', () => this.exportToPDF());
         paperSize.addEventListener('change', (e) => this.handlePaperSizeChange(e));
+
+        if (fillUntilPagesInput) {
+            fillUntilPagesInput.addEventListener('input', () => {
+                // Do not auto-correct while typing.
+            });
+            fillUntilPagesInput.addEventListener('change', () => {
+                // Normalize to an integer and clamp upward to the computed minimum.
+                this.setFillUntilPagesInputValue(this.getFillUntilPages());
+                this.setFillUntilPagesMin(this.computeMinimumPagesRequired());
+
+                // Do not apply fill until the user regenerates the layout.
+                this.markLayoutStale({ resetFillUntilPages: false });
+            });
+        }
+
+        if (fillUntilPagesEnabled) {
+            fillUntilPagesEnabled.addEventListener('change', () => {
+                // Refresh minimum; toggling fill on/off affects layout behavior.
+                this.setFillUntilPagesMin(this.computeMinimumPagesRequired());
+
+                // Do not apply fill until the user regenerates the layout.
+                this.markLayoutStale({ resetFillUntilPages: false });
+            });
+        }
 
         if (cancelExportBtn) cancelExportBtn.addEventListener('click', () => this.cancelExport());
         
@@ -497,12 +525,43 @@ class SheetBuilder {
         paperWidth.addEventListener('input', () => {
             this.validateAllImages();
             this.checkForCustomSize();
+            this.markLayoutStale({ resetFillUntilPages: false });
+        });
+        paperWidth.addEventListener('change', () => {
+            this.markLayoutStale({ resetFillUntilPages: true });
         });
         paperHeight.addEventListener('input', () => {
             this.validateAllImages();
             this.checkForCustomSize();
+            this.markLayoutStale({ resetFillUntilPages: false });
         });
-        outerMargin.addEventListener('input', () => this.validateAllImages());
+        paperHeight.addEventListener('change', () => {
+            this.markLayoutStale({ resetFillUntilPages: true });
+        });
+        outerMargin.addEventListener('input', () => {
+            this.validateAllImages();
+            this.markLayoutStale({ resetFillUntilPages: false });
+        });
+        outerMargin.addEventListener('change', () => {
+            this.markLayoutStale({ resetFillUntilPages: true });
+        });
+
+        const innerMargin = document.getElementById('innerMargin');
+        if (innerMargin) {
+            innerMargin.addEventListener('input', () => {
+                this.markLayoutStale({ resetFillUntilPages: false });
+            });
+            innerMargin.addEventListener('change', () => {
+                this.markLayoutStale({ resetFillUntilPages: true });
+            });
+        }
+
+        const rotateImages = document.getElementById('rotateImages');
+        if (rotateImages) {
+            rotateImages.addEventListener('change', () => {
+                this.markLayoutStale({ resetFillUntilPages: true });
+            });
+        }
     }
 
     handlePaperSizeChange(event) {
@@ -527,6 +586,7 @@ class SheetBuilder {
             
             // Trigger validation after changing paper size
             this.validateAllImages();
+            this.markLayoutStale();
         }
     }
 
@@ -614,6 +674,8 @@ class SheetBuilder {
         // Update UI
         this.updateQuickSelectionControls();
         this.updateSelectionCount();
+
+        this.markLayoutStale();
     }
 
     updateImageSize(id, property, value) {
@@ -643,6 +705,8 @@ class SheetBuilder {
             
             // Real-time validation
             this.validateImageInRealTime(image);
+
+            this.markLayoutStale();
         }
     }
 
@@ -959,6 +1023,8 @@ class SheetBuilder {
         
         // Show success message
         alert(`Applied bulk changes to ${selectedImageData.length} image(s).`);
+
+        this.markLayoutStale();
     }
 
     updateImageConfigDisplay(imageData) {
@@ -1054,6 +1120,8 @@ class SheetBuilder {
             return;
         }
 
+        this.markLayoutStale({ resetFillUntilPages: false });
+
         imageFiles.forEach((file, index) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -1081,6 +1149,9 @@ class SheetBuilder {
 
                     this.images.push(imageData);
                     this.renderImageConfig(imageData);
+
+                    // Keep Fill-until-pages synced to the new minimum requirement.
+                    this.setFillUntilPagesMin(this.computeMinimumPagesRequired());
 
                     // Generate a lightweight preview in the background for layout preview.
                     this.createPreviewDataUrl(file).then((previewDataUrl) => {
@@ -1137,26 +1208,74 @@ class SheetBuilder {
             }
         }
 
-        // Expand images based on copies
-        const allImages = [];
+        // Expand images based on copies (this is the "requested" set)
+        const requestedImages = [];
         this.images.forEach(img => {
-            for (let i = 0; i < img.copies; i++) {
-                allImages.push({
+            const copies = Math.max(1, Math.floor(Number(img.copies) || 1));
+            for (let i = 0; i < copies; i++) {
+                requestedImages.push({
                     ...img,
+                    isRequired: true,
                     copyIndex: i,
                     originalId: img.id
                 });
             }
         });
 
-        // Apply smart packing algorithm
-        this.layout = this.packImages(allImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        // 1) Pack the requested set to find the true minimum pages.
+        const baseLayout = this.packImages(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        const minPages = Math.max(1, baseLayout.length);
+
+        // Keep the input's minimum synced, without overwriting larger user-entered values.
+        this.setFillUntilPagesMin(minPages);
+
+        // If fill is not enabled, just use the minimum required layout.
+        if (!this.isFillUntilEnabled()) {
+            this.layout = baseLayout;
+        } else {
+            const targetPages = Math.max(minPages, this.getFillUntilPages());
+
+            // Always attempt at least one duplicate batch when filling, so "fill 1 page" can add more copies.
+            let multiplier = Math.max(2, Math.ceil(targetPages / Math.max(1, minPages)));
+            const maxAttempts = 30;
+            let finalLayout = baseLayout;
+
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const expanded = [];
+                // Required set first
+                for (const img of requestedImages) expanded.push(img);
+
+                // Optional duplicates
+                for (let batch = 0; batch < (multiplier - 1); batch++) {
+                    for (const img of requestedImages) {
+                        expanded.push({
+                            ...img,
+                            isRequired: false,
+                            duplicateSetIndex: batch
+                        });
+                    }
+                }
+
+                const layout = this.packImages(expanded, printableWidth, printableHeight, innerMargin, allowRotation);
+                finalLayout = layout;
+
+                if (layout.length >= targetPages) {
+                    // Safe because required items are packed first.
+                    finalLayout = layout.slice(0, targetPages);
+                    break;
+                }
+
+                multiplier += 1;
+            }
+
+            this.layout = finalLayout;
+        }
         
         this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
         this.lastPreviewParams = { paperWidth, paperHeight, outerMargin };
         this.updateLayoutStats();
-        
-        document.getElementById('exportPDF').disabled = false;
+
+        this.setExportButtonsDisabled(false);
     }
 
     validateImageSizes(printableWidth, printableHeight) {
@@ -1235,6 +1354,9 @@ class SheetBuilder {
 
         // Sort for packing efficiency and stability (deterministic)
         const sorted = [...images].sort((a, b) => {
+            const aRequired = Boolean(a.isRequired);
+            const bRequired = Boolean(b.isRequired);
+            if (aRequired !== bRequired) return aRequired ? -1 : 1;
             const aArea = a.width * a.height;
             const bArea = b.width * b.height;
             if (bArea !== aArea) return bArea - aArea;
@@ -1892,7 +2014,7 @@ class SheetBuilder {
     }
 
     updateLayoutStats() {
-        const totalImages = this.images.reduce((sum, img) => sum + img.copies, 0);
+        const totalImages = this.layout.reduce((sum, page) => sum + (page.images?.length || 0), 0);
         const totalPages = this.layout.length;
         const imagesPerPage = totalPages > 0 ? (totalImages / totalPages).toFixed(1) : 0;
 
@@ -1909,6 +2031,126 @@ class SheetBuilder {
                 </div>
             </div>
         `;
+    }
+
+    getFillUntilPages() {
+        const el = document.getElementById('fillUntilPages');
+        const raw = el ? String(el.value).trim() : '';
+        const parsed = Number.parseInt(raw, 10);
+        if (!Number.isFinite(parsed) || parsed < 1) return 1;
+        return parsed;
+    }
+
+    isFillUntilEnabled() {
+        return Boolean(document.getElementById('fillUntilPagesEnabled')?.checked);
+    }
+
+    setFillUntilPagesMin(minPages) {
+        const el = document.getElementById('fillUntilPages');
+        if (!el) return;
+
+        const safeMin = Math.max(1, Math.floor(Number(minPages) || 1));
+        el.min = String(safeMin);
+
+        const current = this.getFillUntilPages();
+        if (current < safeMin) {
+            this.setFillUntilPagesInputValue(safeMin);
+        }
+    }
+
+    getPdfCompressionSetting() {
+        const el = document.getElementById('pdfCompression');
+        const v = el ? String(el.value || '').trim() : '';
+        return v || 'perfect';
+    }
+
+    getPdfCompressionOptions() {
+        const setting = this.getPdfCompressionSetting();
+
+        // jsPDF's addImage supports an optional compression mode for PNG (Flate) and JPEG.
+        // For lossless modes we keep PNG; for tiers we convert to JPEG at varying quality.
+        switch (setting) {
+            case 'high':
+                return { outputFormat: 'JPEG', jsPdfCompression: 'MEDIUM', jpegQuality: 0.9 };
+            case 'medium':
+                return { outputFormat: 'JPEG', jsPdfCompression: 'MEDIUM', jpegQuality: 0.8 };
+            case 'low':
+                return { outputFormat: 'JPEG', jsPdfCompression: 'FAST', jpegQuality: 0.65 };
+            case 'perfect':
+            default:
+                return { outputFormat: 'PNG', jsPdfCompression: 'NONE', jpegQuality: null };
+        }
+    }
+
+    setFillUntilPagesInputValue(value) {
+        const el = document.getElementById('fillUntilPages');
+        if (!el) return;
+        const v = Math.max(1, Math.floor(Number(value)));
+        el.value = String(Number.isFinite(v) ? v : 1);
+    }
+
+    computeMinimumPagesRequired() {
+        if (!this.images || this.images.length === 0) return 1;
+
+        const { paperWidth, paperHeight, outerMargin, innerMargin } = this.getPaperSettingsMm();
+        const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
+        const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
+        if (paperIssue) return 1;
+
+        const printableWidth = paperWidth - (2 * outerMargin);
+        const printableHeight = paperHeight - (2 * outerMargin);
+        if (!Number.isFinite(printableWidth) || !Number.isFinite(printableHeight) || printableWidth <= 0 || printableHeight <= 0) return 1;
+
+        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight);
+        if (oversizedImages.length > 0) return 1;
+
+        if (!allowRotation) {
+            const requiresRotation = this.images.filter(img => img.width > printableWidth || img.height > printableHeight);
+            if (requiresRotation.length > 0) return 1;
+        }
+
+        const requestedImages = [];
+        this.images.forEach(img => {
+            const copies = Math.max(1, Math.floor(Number(img.copies) || 1));
+            for (let i = 0; i < copies; i++) {
+                requestedImages.push({
+                    ...img,
+                    copyIndex: i,
+                    originalId: img.id
+                });
+            }
+        });
+
+        const layout = this.packImages(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        return Math.max(1, layout.length);
+    }
+
+    markLayoutStale({ resetFillUntilPages = true } = {}) {
+        this.layout = [];
+        this.lastPreviewParams = null;
+
+        this.setExportButtonsDisabled(true);
+
+        const preview = document.getElementById('layoutPreview');
+        if (preview) preview.innerHTML = '';
+
+        const stats = document.getElementById('layoutStats');
+        if (stats) stats.innerHTML = '';
+
+        if (resetFillUntilPages) {
+            this.setFillUntilPagesMin(this.computeMinimumPagesRequired());
+        }
+    }
+
+    setExportButtonsDisabled(disabled) {
+        const btns = [
+            document.getElementById('exportPDF'),
+            document.getElementById('exportPDFBottom')
+        ].filter(Boolean);
+
+        for (const btn of btns) {
+            btn.disabled = Boolean(disabled);
+        }
     }
 
     async exportToPDF() {
@@ -1928,7 +2170,7 @@ class SheetBuilder {
             abortController
         };
 
-        if (exportBtn) exportBtn.disabled = true;
+        this.setExportButtonsDisabled(true);
         if (cancelBtn) {
             cancelBtn.disabled = false;
             cancelBtn.textContent = 'Cancel';
@@ -1938,6 +2180,7 @@ class SheetBuilder {
 
         const { jsPDF } = window.jspdf;
         const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
+        const { outputFormat, jsPdfCompression, jpegQuality } = this.getPdfCompressionOptions();
 
         const pdf = new jsPDF({
             orientation: paperWidth > paperHeight ? 'landscape' : 'portrait',
@@ -1970,18 +2213,21 @@ class SheetBuilder {
                 for (const img of page.images) {
                     throwIfAborted();
                     try {
-                        const imageData = await this.loadImageForPDF(img, abortController.signal);
+                        const imageData = await this.loadImageForPDF(img, abortController.signal, {
+                            outputFormat,
+                            jpegQuality
+                        });
                         throwIfAborted();
 
                         pdf.addImage(
                             imageData,
-                            'PNG',
+                            outputFormat,
                             outerMargin + img.x,
                             outerMargin + img.y,
                             img.width,
                             img.height,
                             undefined,
-                            'NONE'
+                            jsPdfCompression
                         );
                     } catch (error) {
                         if (error && (error.name === 'AbortError' || error.message === 'Export canceled')) {
@@ -2011,7 +2257,7 @@ class SheetBuilder {
                 this.setExportOverlayVisible(false);
             }, 150);
 
-            if (exportBtn) exportBtn.disabled = false;
+            this.setExportButtonsDisabled(false);
             this._exportState = {
                 inProgress: false,
                 abortController: null
@@ -2019,7 +2265,12 @@ class SheetBuilder {
         }
     }
 
-    loadImageForPDF(imgData, abortSignal) {
+    loadImageForPDF(imgData, abortSignal, options = {}) {
+        const {
+            outputFormat = 'PNG',
+            jpegQuality = 0.85
+        } = options;
+
         return new Promise((resolve, reject) => {
             const img = new Image();
 
@@ -2079,7 +2330,14 @@ class SheetBuilder {
                     ctx.drawImage(img, 0, 0);
                 }
 
-                // Use lossless PNG export for maximum quality (no JPEG compression).
+                if (String(outputFormat).toUpperCase() === 'JPEG') {
+                    // JPEG is lossy; keep the white background fill above.
+                    const q = Number.isFinite(jpegQuality) ? Math.min(1, Math.max(0.1, jpegQuality)) : 0.85;
+                    resolve(canvas.toDataURL('image/jpeg', q));
+                    return;
+                }
+
+                // Default: lossless PNG.
                 resolve(canvas.toDataURL('image/png'));
             };
             img.onerror = (e) => {

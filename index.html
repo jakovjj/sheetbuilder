@@ -156,6 +156,17 @@
                             <label for="rotateImages" class="checkbox-label">Rotate images for better fit</label>
                         </div>
                     </div>
+
+                    <div class="setting-group">
+                        <label for="pdfCompression">PDF Image Compression:</label>
+                        <select id="pdfCompression">
+                            <option value="perfect" selected>Perfect quality</option>
+                            <option value="high">High quality</option>
+                            <option value="medium">Medium quality</option>
+                            <option value="low">Low quality</option>
+                        </select>
+                        <small>Higher quality results in larger PDFs.</small>
+                    </div>
                 </div>
             </section>
 
@@ -168,6 +179,15 @@
                     <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
                     Export to PDF
                 </button>
+
+                <div class="actions-controls" aria-label="Export options">
+                    <div class="actions-control-group">
+                        <input type="checkbox" id="fillUntilPagesEnabled">
+                        <label for="fillUntilPages">Fill until pages:</label>
+                        <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*">
+                    </div>
+                    <small class="actions-control-help">During export, repeats the layout until this page count is reached (minimum is the pages required).</small>
+                </div>
             </section>
 
             <!-- Loading Overlay -->
@@ -197,6 +217,11 @@
                 <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-eye"></i></span>Layout Preview</h2>
                 <div id="layoutPreview" class="layout-preview"></div>
                 <div id="layoutStats" class="layout-stats"></div>
+
+                <button id="exportPDFBottom" class="action-btn secondary">
+                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
+                    Export to PDF
+                </button>
             </section>
         </main>
         
@@ -204,6 +229,7 @@
             <div class="footer-content">
                 <div class="footer-info">
                     <p>&copy; 2025 Glare Studios. All rights reserved.</p>
+                    <p>Free support: <a href="mailto:jakov@jandric.com">jakov@jandric.com</a></p>
                 </div>
                 <div class="footer-actions">
                     <form action="https://paypal.me/itsjakovj" method="post" target="_top">

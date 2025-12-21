@@ -879,6 +879,19 @@ h2 {
     color: #666;
 }
 
+.footer-info p + p {
+    margin-top: 6px;
+}
+
+.footer-info a {
+    color: #dc2626;
+    text-decoration: none;
+}
+
+.footer-info a:hover {
+    text-decoration: underline;
+}
+
 .paypal-btn {
     background: #28a745; /* Green background */
     color: white;
@@ -928,6 +941,54 @@ h2 {
 }
 
 .actions-section {
+    text-align: center;
+}
+
+.actions-controls {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.actions-control-group {
+    display: inline-grid;
+    grid-template-columns: 18px max-content 96px;
+    gap: 6px 8px;
+    align-items: center;
+    text-align: left;
+}
+
+.actions-control-group input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #dc2626;
+}
+
+.actions-control-group label {
+    font-weight: 600;
+    color: #374151;
+}
+
+.actions-control-group input {
+    padding: 10px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.actions-control-group input:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.actions-control-help {
+    color: #6b7280;
+    font-size: 0.9rem;
+    max-width: 520px;
     text-align: center;
 }
 
@@ -1084,6 +1145,10 @@ h2 {
     border: 1px solid #fecaca;
     border-radius: 8px;
     max-width: 600px;
+}
+
+#exportPDFBottom {
+    margin-top: 18px;
 }
 
 .stats-grid {
@@ -1434,6 +1499,19 @@ input:focus-visible {
     margin-top: 10px;
     font-weight: 600;
     color: white;
+}
+
+#exportOverlay #cancelExport.action-btn {
+    margin-top: 18px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+#exportOverlay #cancelExport.action-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 1);
+    border-color: rgba(255, 255, 255, 0.85);
 }
 
 /* ============================================================
