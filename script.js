@@ -1484,18 +1484,12 @@ class SheetBuilder {
         } else {
             const targetPages = Math.max(minPages, this.getFillUntilPages());
 
-            // Always attempt at least one duplicate batch when filling, so "fill 1 page" can add more copies.
-            let multiplier = Math.max(2, Math.ceil(targetPages / Math.max(1, minPages)));
-            const maxAttempts = 30;
-            let finalLayout = baseLayout;
-
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            // Goal: duplicate the *entire required roster* as many whole times as will fit
+            // within <= targetPages. Never add a partial roster.
+            const buildExpanded = (duplicateSets) => {
                 const expanded = [];
-                // Required set first
                 for (const img of requestedImages) expanded.push(img);
-
-                // Optional duplicates
-                for (let batch = 0; batch < (multiplier - 1); batch++) {
+                for (let batch = 0; batch < duplicateSets; batch++) {
                     for (const img of requestedImages) {
                         expanded.push({
                             ...img,
@@ -1504,20 +1498,64 @@ class SheetBuilder {
                         });
                     }
                 }
+                return expanded;
+            };
 
-                const layout = this.packImages(expanded, printableWidth, printableHeight, innerMargin, allowRotation);
-                finalLayout = layout;
+            const packWithDuplicateSets = (duplicateSets) => {
+                const expanded = buildExpanded(duplicateSets);
+                return this.packImages(expanded, printableWidth, printableHeight, innerMargin, allowRotation);
+            };
 
-                if (layout.length >= targetPages) {
-                    // Safe because required items are packed first.
-                    finalLayout = layout.slice(0, targetPages);
+            // Heuristic cap to avoid runaway loops on extremely tiny items.
+            const estimatedRosterArea = requestedImages.reduce((sum, img) => {
+                const w = Number.isFinite(img.width) ? Math.max(0, img.width) : 0;
+                const h = Number.isFinite(img.height) ? Math.max(0, img.height) : 0;
+                const a = (w + innerMargin) * (h + innerMargin);
+                return sum + (Number.isFinite(a) ? a : 0);
+            }, 0);
+            const pageArea = (Number.isFinite(printableWidth) && Number.isFinite(printableHeight)) ? (printableWidth * printableHeight) : NaN;
+            const maxDuplicateSetsCap = (() => {
+                if (!Number.isFinite(pageArea) || pageArea <= 0) return 5000;
+                if (!Number.isFinite(estimatedRosterArea) || estimatedRosterArea <= 0) return 5000;
+                const est = Math.ceil((targetPages * pageArea) / estimatedRosterArea) + 20;
+                return Math.min(50000, Math.max(1, est));
+            })();
+
+            let bestDuplicateSets = 0;
+            let bestLayout = baseLayout;
+
+            // Exponential search for an upper bound that exceeds targetPages.
+            let low = 0;
+            let high = 1;
+            while (high <= maxDuplicateSetsCap) {
+                const layout = packWithDuplicateSets(high);
+                if (layout.length <= targetPages) {
+                    bestDuplicateSets = high;
+                    bestLayout = layout;
+                    low = high;
+                    high = high * 2;
+                } else {
                     break;
                 }
+            }
+            high = Math.min(high, maxDuplicateSetsCap);
 
-                multiplier += 1;
+            // Binary search for the maximum duplicateSets that still fits.
+            let left = low + 1;
+            let right = high;
+            while (left <= right) {
+                const mid = Math.floor((left + right) / 2);
+                const layout = packWithDuplicateSets(mid);
+                if (layout.length <= targetPages) {
+                    bestDuplicateSets = mid;
+                    bestLayout = layout;
+                    left = mid + 1;
+                } else {
+                    right = mid - 1;
+                }
             }
 
-            this.layout = finalLayout;
+            this.layout = bestLayout;
         }
         
         this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
