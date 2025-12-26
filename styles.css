@@ -20,7 +20,7 @@ body {
 
 header.site-header {
     text-align: center;
-    padding: 12px 0;
+    padding: clamp(8px, 2.2vw, 12px) 0;
     background: linear-gradient(135deg, #dc2626, #b91c1c);
     border-radius: 0 0 16px 16px;
     color: white;
@@ -101,9 +101,19 @@ header.site-header .container {
 @media (max-width: 640px) {
     .header-controls {
         position: static;
-        margin-top: 10px;
+        margin-top: 8px;
         right: auto;
         top: auto;
+    }
+
+    .header-control-label {
+        font-size: 0.9rem;
+    }
+
+    .header-control-select {
+        font-size: 0.9rem;
+        padding: 5px 8px;
+        border-radius: 10px;
     }
 }
 
@@ -115,9 +125,42 @@ header.site-header .container {
 }
 
 .header-brand-image {
-    max-height: 88px;
+    max-height: clamp(48px, 18vw, 88px);
     width: auto;
     display: block;
+}
+
+@media (max-width: 420px) {
+    header.site-header {
+        padding: 8px 0;
+    }
+
+    header.site-header .title-section {
+        margin-top: 6px;
+    }
+
+    header.site-header .title-section p {
+        font-size: 0.85rem;
+        line-height: 1.25;
+    }
+
+    .header-controls {
+        gap: 8px;
+    }
+}
+
+@media (max-width: 360px) {
+    header.site-header {
+        padding: 6px 0;
+    }
+
+    header.site-header .title-section p {
+        font-size: 0.8rem;
+    }
+
+    .header-control-select {
+        padding: 4px 7px;
+    }
 }
 
 .title-logo-bubble {
@@ -1306,6 +1349,10 @@ h2 {
 
     header.site-header {
         padding: 10px 0;
+    }
+
+    .header-brand-image {
+        max-height: 64px;
     }
 
     header.site-header .title-section {
