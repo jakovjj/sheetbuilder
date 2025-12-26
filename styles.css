@@ -442,6 +442,49 @@ h2 {
     font-style: italic;
 }
 
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.bleed-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 0;
+    flex-wrap: wrap;
+}
+
+.bleed-setting-toggle {
+    margin-top: 0;
+}
+
+.bleed-setting-toggle input[type="checkbox"] {
+    margin: 0;
+}
+
+.bleed-setting-input {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.bleed-setting-input input {
+    width: 110px;
+}
+
+.bleed-setting-suffix {
+    color: #6b7280;
+    font-weight: 700;
+}
+
 .checkbox-group {
     display: flex;
     align-items: center;
@@ -890,6 +933,14 @@ h2 {
     gap: 15px;
 }
 
+.footer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .footer-info p {
     margin: 0;
     font-size: 0.9rem;
@@ -937,6 +988,39 @@ h2 {
     box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
 }
 
+.github-btn {
+    background: #ffffff;
+    color: #dc2626;
+    border: 2px solid rgba(220, 38, 38, 0.22);
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.10);
+}
+
+.github-btn:hover {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 38, 38, 0.22);
+}
+
+.github-logo {
+    display: block;
+}
+
+.github-btn:hover .github-logo {
+    filter: invert(1);
+}
+
 .paypal-btn:hover {
     background: #218838; /* Darker green on hover */
     transform: translateY(-1px);
@@ -947,6 +1031,10 @@ h2 {
     .footer-content {
         flex-direction: column;
         text-align: center;
+    }
+
+    .footer-actions {
+        justify-content: center;
     }
 }
 

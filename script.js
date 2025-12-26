@@ -155,11 +155,21 @@ class SheetBuilder {
     }
 
     syncAllLengthInputsAttributes() {
-        const ids = ['paperWidth', 'paperHeight', 'outerMargin', 'innerMargin', 'bulkWidth', 'bulkHeight'];
+        const ids = ['paperWidth', 'paperHeight', 'outerMargin', 'innerMargin', 'bleedMargin', 'bulkWidth', 'bulkHeight'];
         for (const id of ids) {
             this.syncLengthInputAttributes(document.getElementById(id));
         }
         document.querySelectorAll('.image-config input[data-min-mm][data-step-mm]').forEach((el) => this.syncLengthInputAttributes(el));
+    }
+
+    getBleedSettingsMm() {
+        const enabled = Boolean(document.getElementById('bleedLinesEnabled')?.checked);
+        const marginMm = this.readLengthInputMm(document.getElementById('bleedMargin'));
+        const safeMargin = Number.isFinite(marginMm) ? Math.max(0, marginMm) : 0;
+        return {
+            enabled,
+            marginMm: enabled ? safeMargin : 0
+        };
     }
 
     updateUnitLabels() {
@@ -241,6 +251,9 @@ class SheetBuilder {
         // Convert existing inputs from the current unit into mm before switching.
         const paperMm = this.getPaperSettingsMm();
 
+        const bleedMarginEl = document.getElementById('bleedMargin');
+        const bleedMarginMm = bleedMarginEl && bleedMarginEl.value ? this.readLengthInputMm(bleedMarginEl) : null;
+
         const bulkWidthEl = document.getElementById('bulkWidth');
         const bulkHeightEl = document.getElementById('bulkHeight');
         const bulkWidthMm = bulkWidthEl && bulkWidthEl.value ? this.readLengthInputMm(bulkWidthEl) : null;
@@ -266,6 +279,7 @@ class SheetBuilder {
         this.writeLengthInputFromMm(document.getElementById('paperHeight'), paperMm.paperHeight);
         this.writeLengthInputFromMm(document.getElementById('outerMargin'), paperMm.outerMargin);
         this.writeLengthInputFromMm(document.getElementById('innerMargin'), paperMm.innerMargin);
+        if (bleedMarginMm !== null) this.writeLengthInputFromMm(bleedMarginEl, bleedMarginMm);
         if (bulkWidthMm !== null) this.writeLengthInputFromMm(bulkWidthEl, bulkWidthMm);
         if (bulkHeightMm !== null) this.writeLengthInputFromMm(bulkHeightEl, bulkHeightMm);
 
@@ -406,16 +420,32 @@ class SheetBuilder {
         ctx.strokeRect(printableX + 0.5, printableY + 0.5, printableW - 1, printableH - 1);
         ctx.setLineDash([]);
 
+        const { enabled: bleedEnabled } = this.getBleedSettingsMm();
+
         for (const placed of page.images) {
             const x = (outerMargin + placed.x) * scale;
             const y = (outerMargin + placed.y) * scale;
             const w = placed.width * scale;
             const h = placed.height * scale;
 
-            // Box outline
-            ctx.strokeStyle = 'rgba(220, 38, 38, 0.7)';
+            const bleedMm = Number.isFinite(placed.bleedMarginMm) ? Math.max(0, placed.bleedMarginMm) : 0;
+            const innerWmm = Math.max(0, placed.width - 2 * bleedMm);
+            const innerHmm = Math.max(0, placed.height - 2 * bleedMm);
+            const innerX = x + (bleedMm * scale);
+            const innerY = y + (bleedMm * scale);
+            const innerW = innerWmm * scale;
+            const innerH = innerHmm * scale;
+
+            // Bleed outline (dashed) or fallback outline
+            ctx.strokeStyle = 'rgba(220, 38, 38, 0.75)';
             ctx.lineWidth = 1;
-            ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
+            if (bleedEnabled && bleedMm > 0) {
+                ctx.setLineDash([5, 4]);
+                ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
+                ctx.setLineDash([]);
+            } else {
+                ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
+            }
 
             const src = this.getPreviewSrcForPlacedImage(placed);
             if (!src) continue;
@@ -437,15 +467,21 @@ class SheetBuilder {
                 continue;
             }
 
+            // Draw image into the inner box (content area). For non-bleed layouts, inner==outer.
+            const contentBoxX = (bleedEnabled && bleedMm > 0) ? innerX : x;
+            const contentBoxY = (bleedEnabled && bleedMm > 0) ? innerY : y;
+            const contentBoxW = (bleedEnabled && bleedMm > 0) ? innerW : w;
+            const contentBoxH = (bleedEnabled && bleedMm > 0) ? innerH : h;
+
             if (placed.rotated) {
                 ctx.save();
-                ctx.translate(x + w / 2, y + h / 2);
+                ctx.translate(contentBoxX + contentBoxW / 2, contentBoxY + contentBoxH / 2);
                 ctx.rotate(Math.PI / 2);
                 // After 90° rotation, the available box dimensions swap.
-                this.drawImageContain(ctx, img, -h / 2, -w / 2, h, w);
+                this.drawImageContain(ctx, img, -contentBoxH / 2, -contentBoxW / 2, contentBoxH, contentBoxW);
                 ctx.restore();
             } else {
-                this.drawImageContain(ctx, img, x, y, w, h);
+                this.drawImageContain(ctx, img, contentBoxX, contentBoxY, contentBoxW, contentBoxH);
             }
         }
     }
@@ -594,6 +630,23 @@ class SheetBuilder {
         const rotateImages = document.getElementById('rotateImages');
         if (rotateImages) {
             rotateImages.addEventListener('change', () => {
+                this.markLayoutStale({ resetFillUntilPages: true });
+            });
+        }
+
+        const bleedLinesEnabled = document.getElementById('bleedLinesEnabled');
+        if (bleedLinesEnabled) {
+            bleedLinesEnabled.addEventListener('change', () => {
+                this.markLayoutStale({ resetFillUntilPages: true });
+            });
+        }
+
+        const bleedMargin = document.getElementById('bleedMargin');
+        if (bleedMargin) {
+            bleedMargin.addEventListener('input', () => {
+                this.markLayoutStale({ resetFillUntilPages: false });
+            });
+            bleedMargin.addEventListener('change', () => {
                 this.markLayoutStale({ resetFillUntilPages: true });
             });
         }
@@ -747,6 +800,7 @@ class SheetBuilder {
 
     validateImageInRealTime(image) {
         const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
+        const { marginMm: bleedMm } = this.getBleedSettingsMm();
 
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
         
@@ -768,8 +822,11 @@ class SheetBuilder {
             return;
         }
         
-        const canFitNormal = image.width <= printableWidth && image.height <= printableHeight;
-        const canFitRotated = image.height <= printableWidth && image.width <= printableHeight;
+        const effectiveW = image.width + (2 * bleedMm);
+        const effectiveH = image.height + (2 * bleedMm);
+
+        const canFitNormal = effectiveW <= printableWidth && effectiveH <= printableHeight;
+        const canFitRotated = effectiveH <= printableWidth && effectiveW <= printableHeight;
         
         if (!canFitNormal && !canFitRotated) {
             // Add warning if not exists
@@ -1423,6 +1480,7 @@ class SheetBuilder {
         }
 
         const { paperWidth, paperHeight, outerMargin, innerMargin } = this.getPaperSettingsMm();
+        const { marginMm: bleedMm } = this.getBleedSettingsMm();
         const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
 
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
@@ -1437,14 +1495,14 @@ class SheetBuilder {
 
         // Validate that all images can fit on the paper
         // (If rotation is disabled, they must fit in their current orientation.)
-        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight);
+        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight, bleedMm);
         if (oversizedImages.length > 0) {
             this.showOversizedWarning(oversizedImages, printableWidth, printableHeight);
             return;
         }
 
         if (!allowRotation) {
-            const requiresRotation = this.images.filter(img => img.width > printableWidth || img.height > printableHeight);
+            const requiresRotation = this.images.filter(img => (img.width + (2 * bleedMm)) > printableWidth || (img.height + (2 * bleedMm)) > printableHeight);
             if (requiresRotation.length > 0) {
                 let warningMessage = `WARNING: Rotation is disabled, but some images only fit when rotated:\n\n`;
                 warningMessage += `Printable area: ${this.formatLengthValue(printableWidth)}${this.getUnitLabel()} × ${this.formatLengthValue(printableHeight)}${this.getUnitLabel()}\n\n`;
@@ -1462,8 +1520,17 @@ class SheetBuilder {
         this.images.forEach(img => {
             const copies = Math.max(1, Math.floor(Number(img.copies) || 1));
             for (let i = 0; i < copies; i++) {
+                const safeBleed = Number.isFinite(bleedMm) ? Math.max(0, bleedMm) : 0;
+                const packedW = img.width + (2 * safeBleed);
+                const packedH = img.height + (2 * safeBleed);
                 requestedImages.push({
                     ...img,
+                    // Preserve the original artwork size (content), but pack/draw using the bleed box.
+                    contentWidth: img.width,
+                    contentHeight: img.height,
+                    bleedMarginMm: safeBleed,
+                    width: packedW,
+                    height: packedH,
                     isRequired: true,
                     copyIndex: i,
                     originalId: img.id
@@ -1565,7 +1632,7 @@ class SheetBuilder {
         this.setExportButtonsDisabled(false);
     }
 
-    validateImageSizes(printableWidth, printableHeight) {
+    validateImageSizes(printableWidth, printableHeight, bleedMm = 0) {
         const oversizedImages = [];
 
         // If printable area is invalid, treat all images as oversized.
@@ -1577,9 +1644,13 @@ class SheetBuilder {
             }));
         }
         
+        const safeBleed = Number.isFinite(bleedMm) ? Math.max(0, bleedMm) : 0;
+
         this.images.forEach(img => {
-            const canFitNormal = img.width <= printableWidth && img.height <= printableHeight;
-            const canFitRotated = img.height <= printableWidth && img.width <= printableHeight;
+            const effectiveW = img.width + (2 * safeBleed);
+            const effectiveH = img.height + (2 * safeBleed);
+            const canFitNormal = effectiveW <= printableWidth && effectiveH <= printableHeight;
+            const canFitRotated = effectiveH <= printableWidth && effectiveW <= printableHeight;
             
             if (!canFitNormal && !canFitRotated) {
                 oversizedImages.push({
@@ -2380,6 +2451,7 @@ class SheetBuilder {
         if (!this.images || this.images.length === 0) return 1;
 
         const { paperWidth, paperHeight, outerMargin, innerMargin } = this.getPaperSettingsMm();
+        const { marginMm: bleedMm } = this.getBleedSettingsMm();
         const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
         if (paperIssue) return 1;
@@ -2388,11 +2460,11 @@ class SheetBuilder {
         const printableHeight = paperHeight - (2 * outerMargin);
         if (!Number.isFinite(printableWidth) || !Number.isFinite(printableHeight) || printableWidth <= 0 || printableHeight <= 0) return 1;
 
-        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight);
+        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight, bleedMm);
         if (oversizedImages.length > 0) return 1;
 
         if (!allowRotation) {
-            const requiresRotation = this.images.filter(img => img.width > printableWidth || img.height > printableHeight);
+            const requiresRotation = this.images.filter(img => (img.width + (2 * bleedMm)) > printableWidth || (img.height + (2 * bleedMm)) > printableHeight);
             if (requiresRotation.length > 0) return 1;
         }
 
@@ -2400,8 +2472,14 @@ class SheetBuilder {
         this.images.forEach(img => {
             const copies = Math.max(1, Math.floor(Number(img.copies) || 1));
             for (let i = 0; i < copies; i++) {
+                const safeBleed = Number.isFinite(bleedMm) ? Math.max(0, bleedMm) : 0;
                 requestedImages.push({
                     ...img,
+                    contentWidth: img.width,
+                    contentHeight: img.height,
+                    bleedMarginMm: safeBleed,
+                    width: img.width + (2 * safeBleed),
+                    height: img.height + (2 * safeBleed),
                     copyIndex: i,
                     originalId: img.id
                 });
@@ -2467,6 +2545,7 @@ class SheetBuilder {
 
         const { jsPDF } = window.jspdf;
         const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
+        const { enabled: bleedEnabled } = this.getBleedSettingsMm();
         const { outputFormat, jsPdfCompression, jpegQuality } = this.getPdfCompressionOptions();
 
         const pdf = new jsPDF({
@@ -2506,13 +2585,39 @@ class SheetBuilder {
                         });
                         throwIfAborted();
 
+                        const bleedMm = Number.isFinite(img.bleedMarginMm) ? Math.max(0, img.bleedMarginMm) : 0;
+                        const innerW = Math.max(0, img.width - 2 * bleedMm);
+                        const innerH = Math.max(0, img.height - 2 * bleedMm);
+
+                        // Draw dashed bleed border (outer box).
+                        if (bleedEnabled && bleedMm > 0) {
+                            pdf.setDrawColor(220, 38, 38);
+                            pdf.setLineWidth(0.2);
+                            if (typeof pdf.setLineDashPattern === 'function') {
+                                pdf.setLineDashPattern([2, 2], 0);
+                            } else if (typeof pdf.setLineDash === 'function') {
+                                pdf.setLineDash([2, 2], 0);
+                            }
+                            pdf.rect(
+                                outerMargin + img.x,
+                                outerMargin + img.y,
+                                img.width,
+                                img.height
+                            );
+                            if (typeof pdf.setLineDashPattern === 'function') {
+                                pdf.setLineDashPattern([], 0);
+                            } else if (typeof pdf.setLineDash === 'function') {
+                                pdf.setLineDash([], 0);
+                            }
+                        }
+
                         pdf.addImage(
                             imageData,
                             outputFormat,
-                            outerMargin + img.x,
-                            outerMargin + img.y,
-                            img.width,
-                            img.height,
+                            outerMargin + img.x + bleedMm,
+                            outerMargin + img.y + bleedMm,
+                            innerW,
+                            innerH,
                             undefined,
                             jsPdfCompression
                         );
