@@ -650,6 +650,61 @@ class SheetBuilder {
                 this.markLayoutStale({ resetFillUntilPages: true });
             });
         }
+
+        const separateByImageSize = document.getElementById('separateByImageSize');
+        if (separateByImageSize) {
+            separateByImageSize.addEventListener('change', () => {
+                // Separating by size changes how pages are constructed.
+                this.markLayoutStale({ resetFillUntilPages: true });
+            });
+        }
+    }
+
+    isSeparateByImageSizeEnabled() {
+        return Boolean(document.getElementById('separateByImageSize')?.checked);
+    }
+
+    getImageSizeKeyForGrouping(img) {
+        const w = Number.isFinite(img?.contentWidth) ? img.contentWidth : img?.width;
+        const h = Number.isFinite(img?.contentHeight) ? img.contentHeight : img?.height;
+        const round = (v) => {
+            const n = Number(v);
+            if (!Number.isFinite(n)) return 'NaN';
+            // Quantize to avoid float noise (especially when using inches).
+            return String(Math.round(n * 100) / 100);
+        };
+        return `${round(w)}x${round(h)}`;
+    }
+
+    packImagesRespectingSizeGroups(images, pageWidth, pageHeight, margin, allowRotation = true) {
+        if (!this.isSeparateByImageSizeEnabled()) {
+            return this.packImages(images, pageWidth, pageHeight, margin, allowRotation);
+        }
+
+        // Keep group order by first appearance in the requested roster,
+        // but still let the packer sort within each group for efficiency.
+        const groups = new Map();
+        const orderedKeys = [];
+        for (const img of images) {
+            const key = this.getImageSizeKeyForGrouping(img);
+            if (!groups.has(key)) {
+                groups.set(key, []);
+                orderedKeys.push(key);
+            }
+            groups.get(key).push(img);
+        }
+
+        const combined = [];
+        for (const key of orderedKeys) {
+            const groupPages = this.packImages(groups.get(key), pageWidth, pageHeight, margin, allowRotation);
+            for (const page of groupPages) {
+                // Tag pages for potential future UI/debugging; existing code ignores unknown props.
+                page.sizeGroupKey = key;
+                combined.push(page);
+            }
+        }
+
+        return combined;
     }
 
     handlePaperSizeChange(event) {
@@ -1539,7 +1594,7 @@ class SheetBuilder {
         });
 
         // 1) Pack the requested set to find the true minimum pages.
-        const baseLayout = this.packImages(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        const baseLayout = this.packImagesRespectingSizeGroups(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
         const minPages = Math.max(1, baseLayout.length);
 
         // Keep the input's minimum synced, without overwriting larger user-entered values.
@@ -1570,7 +1625,7 @@ class SheetBuilder {
 
             const packWithDuplicateSets = (duplicateSets) => {
                 const expanded = buildExpanded(duplicateSets);
-                return this.packImages(expanded, printableWidth, printableHeight, innerMargin, allowRotation);
+                return this.packImagesRespectingSizeGroups(expanded, printableWidth, printableHeight, innerMargin, allowRotation);
             };
 
             // Heuristic cap to avoid runaway loops on extremely tiny items.
@@ -2486,7 +2541,7 @@ class SheetBuilder {
             }
         });
 
-        const layout = this.packImages(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        const layout = this.packImagesRespectingSizeGroups(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
         return Math.max(1, layout.length);
     }
 
