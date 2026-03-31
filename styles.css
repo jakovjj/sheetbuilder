@@ -20,7 +20,7 @@ body {
 
 header.site-header {
     text-align: center;
-    padding: clamp(8px, 2.2vw, 12px) 0;
+    padding: clamp(6px, 0.8vw, 10px) 0;
     background: linear-gradient(135deg, #dc2626, #b91c1c);
     border-radius: 0 0 16px 16px;
     color: white;
@@ -52,12 +52,12 @@ header.site-header .header-logo {
 }
 
 header.site-header .title-section h1 {
-    font-size: 1.9rem;
+    font-size: clamp(1.2rem, 1.8vw, 1.75rem);
     margin: 0 0 4px 0;
 }
 
 header.site-header .title-section p {
-    font-size: 0.95rem;
+    font-size: clamp(0.8rem, 1vw, 0.95rem);
 }
 
 header.site-header .container {
@@ -125,39 +125,18 @@ header.site-header .container {
 }
 
 .header-brand-image {
-    max-height: clamp(48px, 18vw, 88px);
+    max-height: clamp(40px, 5vw, 68px);
     width: auto;
     display: block;
 }
 
 @media (max-width: 420px) {
-    header.site-header {
-        padding: 8px 0;
-    }
-
-    header.site-header .title-section {
-        margin-top: 6px;
-    }
-
-    header.site-header .title-section p {
-        font-size: 0.85rem;
-        line-height: 1.25;
-    }
-
     .header-controls {
         gap: 8px;
     }
 }
 
 @media (max-width: 360px) {
-    header.site-header {
-        padding: 6px 0;
-    }
-
-    header.site-header .title-section p {
-        font-size: 0.8rem;
-    }
-
     .header-control-select {
         padding: 4px 7px;
     }
@@ -1470,25 +1449,8 @@ h2 {
         padding: 4px 8px;
     }
 
-    header.site-header {
-        padding: 10px 0;
-    }
-
-    .header-brand-image {
-        max-height: 64px;
-    }
-
     header.site-header .title-section {
         margin-top: 6px;
-    }
-
-    header.site-header .title-section h1 {
-        font-size: 1.6rem;
-        margin-bottom: 2px;
-    }
-
-    header.site-header .title-section p {
-        font-size: 0.9rem;
     }
     
     .nav-controls {
