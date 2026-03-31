@@ -803,6 +803,7 @@ h2 {
     position: absolute;
     top: 5px;
     right: 5px;
+    z-index: 2;
     width: 20px;
     height: 20px;
     padding: 0;
@@ -1258,7 +1259,13 @@ h2 {
     gap: 12px;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: stretch;
     margin-top: 16px;
+}
+
+.preview-export-btns .action-btn {
+    flex: 1 1 200px;
+    justify-content: center;
 }
 
 .actions-controls {
@@ -1469,7 +1476,6 @@ h2 {
 }
 
 #exportPDFBottom {
-    margin-top: 18px;
 }
 
 .stats-grid {
