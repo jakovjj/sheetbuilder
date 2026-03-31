@@ -821,17 +821,18 @@ class SheetBuilder {
         config.innerHTML = `
             <div class="image-thumb" title="${imageData.name}">
                 <img src="${imageData.dataUrl}" alt="${imageData.name}">
+                <button class="image-remove-btn" onclick="sheetBuilder.removeImage(${imageData.id})" title="Remove image">✕</button>
             </div>
             <div class="image-bar">
-                <label>W (${this.getUnitLabel()})
+                <label><span>W</span>
                     <input data-field="width" type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
                            onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)">
                 </label>
-                <label>H (${this.getUnitLabel()})
+                <label><span>H</span>
                     <input data-field="height" type="number" value="${this.formatLengthValue(imageData.height)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
                            onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)">
                 </label>
-                <label>C
+                <label><span>copies</span>
                     <input data-field="copies" type="number" value="${imageData.copies}" min="1"
                            onchange="sheetBuilder.updateImageSize(${imageData.id}, 'copies', this.value)">
                 </label>
@@ -1784,12 +1785,15 @@ class SheetBuilder {
             this.layout = bestLayout;
         }
         
+        const previewSection = document.getElementById('preview');
+        previewSection?.classList.remove('hidden');
+
         this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
         this.lastPreviewParams = { paperWidth, paperHeight, outerMargin };
         this.updateLayoutStats();
 
-        document.getElementById('preview')?.classList.remove('hidden');
         this.setExportButtonsDisabled(false);
+        previewSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     validateImageSizes(printableWidth, printableHeight, bleedMm = 0) {
@@ -2944,6 +2948,9 @@ class SheetBuilder {
             this.setExportProgress(0, totalImages, 'Preparing…');
             throwIfAborted();
 
+            const zip = window.JSZip ? new window.JSZip() : null;
+            const blobs = [];
+
             for (let pageIndex = 0; pageIndex < this.layout.length; pageIndex++) {
                 throwIfAborted();
                 const page = this.layout[pageIndex];
@@ -2953,7 +2960,6 @@ class SheetBuilder {
                 canvas.width = Math.round(paperWidth * PX_PER_MM);
                 canvas.height = Math.round(paperHeight * PX_PER_MM);
                 const ctx = canvas.getContext('2d');
-                // No background fill — transparent canvas so DTF printers don't burn white onto film
 
                 for (const img of page.images) {
                     throwIfAborted();
@@ -2988,24 +2994,55 @@ class SheetBuilder {
                 }
 
                 throwIfAborted();
-                this.setExportProgress(completed, totalImages, `Saving page ${pageIndex + 1}…`);
+                const filename = this.layout.length === 1
+                    ? 'sheetbuilder-layout.png'
+                    : `sheetbuilder-layout-page${pageIndex + 1}.png`;
 
-                await new Promise((resolve, reject) => {
-                    canvas.toBlob(blob => {
-                        if (!blob) { reject(new Error('Failed to create PNG blob')); return; }
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = this.layout.length === 1
-                            ? 'sheetbuilder-layout.png'
-                            : `sheetbuilder-layout-page${pageIndex + 1}.png`;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                        resolve();
-                    }, 'image/png');
+                const blob = await new Promise((resolve, reject) => {
+                    canvas.toBlob(b => b ? resolve(b) : reject(new Error('Failed to create PNG blob')), 'image/png');
                 });
+
+                blobs.push({ filename, blob });
+            }
+
+            throwIfAborted();
+
+            if (blobs.length === 1) {
+                // Single page — download directly
+                const url = URL.createObjectURL(blobs[0].blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = blobs[0].filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else if (zip) {
+                this.setExportProgress(totalImages, totalImages, 'Creating ZIP…');
+                for (const { filename, blob } of blobs) {
+                    zip.file(filename, blob);
+                }
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                const url = URL.createObjectURL(zipBlob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'sheetbuilder-layout.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } else {
+                // JSZip not available, fall back to individual downloads
+                for (const { filename, blob } of blobs) {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
             }
 
             this.setExportProgress(totalImages, totalImages, 'Done');
