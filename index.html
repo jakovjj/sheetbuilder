@@ -90,76 +90,33 @@
                 </div>
             </section>
 
-            <section id="upload" class="upload-section">
-                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-folder-open"></i></span>Upload Images</h2>
-                <div class="file-upload">
-                    <input type="file" id="imageInput" multiple accept="image/*">
-                    <label for="imageInput" class="upload-btn">
-                        <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
-                        Choose Images
-                    </label>
-                    <div class="upload-info">
-                        <p>Drag & drop images here, click to browse, or paste from clipboard</p>
-                        <p class="upload-formats">Supports: JPG, PNG, GIF, WEBP</p>
-                    </div>
-                    <div id="uploadStatus" class="upload-status" hidden aria-live="polite"></div>
-                </div>
-            </section>
-
             <section id="images" class="images-section">
-                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-images"></i></span>Image Configuration</h2>
-                
-                <!-- Bulk Edit Section -->
-                <div class="bulk-edit-section">
-                    <h3 onclick="sheetBuilder.toggleBulkEdit()" class="bulk-edit-header">
-                        <span class="section-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked"></i></span>Bulk Edit Selected Images<span id="bulkToggleIcon" class="toggle-icon collapsed"></span>
-                    </h3>
-                    <div class="bulk-controls collapsed" id="bulkControls">
-                        <div>
-                            <button id="selectAll" class="bulk-btn">Select All</button>
-                            <button id="selectNone" class="bulk-btn">Select None</button>
-                            <button id="removeSelected" class="bulk-btn danger">Remove Selected</button>
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-images"></i></span>Images</h2>
+
+                <div id="upload" class="images-upload">
+                    <div class="file-upload images-window" id="imagesWindow" aria-label="Upload and configure images">
+                        <input type="file" id="imageInput" multiple accept="image/*">
+
+                        <div class="images-empty" id="imagesEmpty">
+                            <label for="imageInput" class="upload-btn">
+                                <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
+                                Choose Images
+                            </label>
+                            <div class="upload-info">
+                                <p>Drag & drop images here, click to browse, or paste from clipboard</p>
+                                <p class="upload-formats">Supports: JPG, PNG, GIF, WEBP</p>
+                            </div>
                         </div>
-                        <div class="bulk-inputs">
-                            <span id="selectionCount">0 images selected</span>
-                            <div class="bulk-input-group">
-                                <label>Width (<span class="unit-label" data-unit-label>mm</span>):</label>
-                                <input type="number" id="bulkWidth" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1" placeholder="Width">
-                            </div>
-                            <div class="bulk-input-group">
-                                <label>Height (<span class="unit-label" data-unit-label>mm</span>):</label>
-                                <input type="number" id="bulkHeight" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1" placeholder="Height">
-                            </div>
-                            <div class="bulk-input-group">
-                                <label>Copies:</label>
-                                <input type="number" id="bulkCopies" min="1" placeholder="Copies">
-                            </div>
-                            <button id="applyBulkChanges" class="action-btn primary">Apply to Selected</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Images List -->
-                <div id="imagesList" class="images-list"></div>
-                
-                <!-- Quick Selection Controls (shown when images exist) -->
-                <div id="quickSelectionControls" class="quick-selection-controls hidden">
-                    <div class="quick-selection-content">
-                        <span class="quick-selection-icon" aria-hidden="true"><i class="fa-solid fa-bolt"></i></span>
-                        <span class="quick-selection-label">Quick Actions:</span>
-                        <div class="quick-selection-buttons">
-                            <button id="quickSelectAll" class="quick-select-btn select-all">
-                                <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-square-check"></i></span>
-                                <span>Select All</span>
-                            </button>
-                            <button id="quickSelectNone" class="quick-select-btn select-none">
-                                <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-square"></i></span>
-                                <span>Select None</span>
-                            </button>
-                            <button id="quickCropImages" class="quick-select-btn crop" type="button">
-                                <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-crop-simple"></i></span>
-                                <span>Crop transparent padding</span>
-                            </button>
+
+                        <div id="imagesList" class="images-list" aria-label="Images"></div>
+                        <div id="boxSelect" class="box-select" hidden aria-hidden="true"></div>
+
+                        <div class="images-window-footer" id="imagesWindowFooter">
+                            <label for="imageInput" class="upload-btn" aria-label="Add more images">
+                                <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
+                                Add Images
+                            </label>
+                            <div id="uploadStatus" class="upload-status" hidden aria-live="polite"></div>
                         </div>
                     </div>
                 </div>
@@ -229,6 +186,16 @@
                     </div>
 
                     <div class="setting-group">
+                        <label for="pngResolution">PNG Export Resolution:</label>
+                        <select id="pngResolution">
+                            <option value="72">72 DPI (screen)</option>
+                            <option value="150" selected>150 DPI (standard)</option>
+                            <option value="300">300 DPI (print quality)</option>
+                        </select>
+                        <small>Used when exporting to PNG. Higher = larger file.</small>
+                    </div>
+
+                    <div class="setting-group">
                         <label for="bleedLinesEnabled">Bleed Settings:</label>
                         <div class="bleed-setting-row">
                             <div class="checkbox-group bleed-setting-toggle">
@@ -253,6 +220,10 @@
                 <button id="exportPDF" class="action-btn secondary">
                     <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
                     Export to PDF
+                </button>
+                <button id="exportPNG" class="action-btn secondary">
+                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
+                    Export to PNG
                 </button>
 
                 <div class="actions-controls" aria-label="Export options">
@@ -296,6 +267,10 @@
                 <button id="exportPDFBottom" class="action-btn secondary">
                     <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
                     Export to PDF
+                </button>
+                <button id="exportPNGBottom" class="action-btn secondary">
+                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
+                    Export to PNG
                 </button>
             </section>
         </main>

@@ -6,6 +6,7 @@ class SheetBuilder {
         this.layout = [];
         this.selectedImages = new Set();
         this.lastSelectedId = null;
+        this._boxSelectState = null;
         this.isRatioLocked = true;
         this.bulkAspectRatio = null;
         this.lastPreviewParams = null;
@@ -23,6 +24,47 @@ class SheetBuilder {
         this.initializeEventListeners();
         this.ensureDefaultPaperSettings();
         this.initializeUnits();
+        this.updateImagesWindowState();
+    }
+
+    getImagesWindowEl() {
+        return document.getElementById('imagesWindow') || document.querySelector('.file-upload');
+    }
+
+    updateImagesWindowState() {
+        const win = this.getImagesWindowEl();
+        if (!win) return;
+        win.classList.toggle('has-images', this.images.length > 0);
+    }
+
+    isInteractiveTarget(target) {
+        if (!target) return false;
+        const el = target.closest?.('input, button, label, select, textarea, a');
+        return Boolean(el);
+    }
+
+    setImageSelected(id, selected) {
+        const tile = document.querySelector(`[data-id="${id}"]`);
+        if (selected) {
+            this.selectedImages.add(id);
+            if (tile) tile.classList.add('selected');
+        } else {
+            this.selectedImages.delete(id);
+            if (tile) tile.classList.remove('selected');
+        }
+    }
+
+    clearSelection() {
+        for (const id of Array.from(this.selectedImages)) {
+            this.setImageSelected(id, false);
+        }
+    }
+
+    applySelectionSet(nextSet) {
+        const next = nextSet instanceof Set ? nextSet : new Set(nextSet);
+        for (const img of this.images) {
+            this.setImageSelected(img.id, next.has(img.id));
+        }
     }
 
     getUploadStatusEl() {
@@ -218,13 +260,12 @@ class SheetBuilder {
 
         // Restore selection state
         for (const id of selected) {
-            const checkbox = document.getElementById(`select-${id}`);
             const config = document.querySelector(`[data-id="${id}"]`);
-            if (checkbox) checkbox.checked = true;
             if (config) config.classList.add('selected');
         }
         this.updateQuickSelectionControls();
         this.updateSelectionCount();
+        this.updateImagesWindowState();
     }
 
     initializeUnits() {
@@ -522,6 +563,11 @@ class SheetBuilder {
         generateBtn.addEventListener('click', () => this.generateLayout());
         exportBtn.addEventListener('click', () => this.exportToPDF());
         if (exportBtnBottom) exportBtnBottom.addEventListener('click', () => this.exportToPDF());
+
+        const exportPNGBtn = document.getElementById('exportPNG');
+        const exportPNGBtnBottom = document.getElementById('exportPNGBottom');
+        if (exportPNGBtn) exportPNGBtn.addEventListener('click', () => this.exportToPNG());
+        if (exportPNGBtnBottom) exportPNGBtnBottom.addEventListener('click', () => this.exportToPNG());
         paperSize.addEventListener('change', (e) => this.handlePaperSizeChange(e));
 
         if (quickCropImagesBtn) {
@@ -587,6 +633,14 @@ class SheetBuilder {
             fileUpload.addEventListener('drop', (e) => this.handleDrop(e));
             fileUpload.addEventListener('dragenter', (e) => this.handleDragEnter(e));
             fileUpload.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+        }
+
+        // Desktop-like selection (ctrl-click + box select)
+        const imagesList = document.getElementById('imagesList');
+        if (imagesList) {
+            imagesList.addEventListener('click', (e) => this.handleImagesListClick(e));
+            imagesList.addEventListener('dblclick', (e) => this.handleImagesListDblClick(e));
+            imagesList.addEventListener('pointerdown', (e) => this.handleImagesListPointerDown(e));
         }
         
         // Clipboard paste functionality
@@ -767,30 +821,23 @@ class SheetBuilder {
         config.className = 'image-config';
         config.dataset.id = imageData.id;
         config.innerHTML = `
-            <input type="checkbox" class="select-checkbox" id="select-${imageData.id}" 
-                   onclick="sheetBuilder.handleCheckboxClick(event, ${imageData.id})">
-            <img src="${imageData.dataUrl}" alt="${imageData.name}" 
-                 onclick="sheetBuilder.showImageModal('${imageData.dataUrl}', '${imageData.name}', '${imageData.originalWidth}x${imageData.originalHeight}')">
-            <div class="config-inputs">
-                <div class="input-with-lock">
-                    <div style="width: 100%;">
-                        <label>Width (${this.getUnitLabel()}):</label>
-                        <input type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
-                               onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)">
-                    </div>
-                </div>
-                <div>
-                    <label>Height (${this.getUnitLabel()}):</label>
-                    <input type="number" value="${this.formatLengthValue(imageData.height)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
-                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)">
-                </div>
-                <div>
-                    <label>Copies:</label>
-                    <input type="number" value="${imageData.copies}" min="1" 
-                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'copies', this.value)">
-                </div>
+            <div class="image-thumb" title="${imageData.name}">
+                <img src="${imageData.dataUrl}" alt="${imageData.name}">
             </div>
-            <button class="remove-btn" onclick="sheetBuilder.removeImage(${imageData.id})">Remove</button>
+            <div class="image-bar">
+                <label>W (${this.getUnitLabel()})
+                    <input data-field="width" type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
+                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)">
+                </label>
+                <label>H (${this.getUnitLabel()})
+                    <input data-field="height" type="number" value="${this.formatLengthValue(imageData.height)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
+                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)">
+                </label>
+                <label>C
+                    <input data-field="copies" type="number" value="${imageData.copies}" min="1"
+                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'copies', this.value)">
+                </label>
+            </div>
         `;
         list.appendChild(config);
 
@@ -799,6 +846,7 @@ class SheetBuilder {
         // Show quick selection controls and update selection count
         this.updateQuickSelectionControls();
         this.updateSelectionCount();
+        this.updateImagesWindowState();
     }
 
     removeImage(id) {
@@ -817,6 +865,7 @@ class SheetBuilder {
         // Update UI
         this.updateQuickSelectionControls();
         this.updateSelectionCount();
+        this.updateImagesWindowState();
 
         this.markLayoutStale();
     }
@@ -832,7 +881,7 @@ class SheetBuilder {
                 image.height = numValue / image.aspectRatio;
                 // Update the height input field
                 const config = document.querySelector(`[data-id="${id}"]`);
-                const heightInput = config.querySelector('input[onchange*="height"]');
+                const heightInput = config.querySelector('input[data-field="height"]');
                 heightInput.value = this.formatLengthValue(image.height);
             } else if (property === 'height') {
                 image.height = numValue;
@@ -840,7 +889,7 @@ class SheetBuilder {
                 image.width = numValue * image.aspectRatio;
                 // Update the width input field
                 const config = document.querySelector(`[data-id="${id}"]`);
-                const widthInput = config.querySelector('input[onchange*="width"]');
+                const widthInput = config.querySelector('input[data-field="width"]');
                 widthInput.value = this.formatLengthValue(image.width);
             } else {
                 image[property] = numValue;
@@ -924,93 +973,149 @@ class SheetBuilder {
     }
 
     // Selection and Bulk Edit Methods
-    handleCheckboxClick(event, id) {
-        const checkbox = event.target;
-        const isSelected = checkbox.checked;
-        
-        if (event.shiftKey && this.lastSelectedId !== null) {
-            // Shift+click: select range
-            this.selectRange(this.lastSelectedId, id, isSelected);
-        } else if (event.ctrlKey || event.metaKey) {
-            // Ctrl+click: toggle individual selection
-            this.toggleImageSelection(id, isSelected);
+    handleImagesListClick(event) {
+        if (this._boxSelectState?.active) return;
+        if (this.isInteractiveTarget(event.target)) return;
+
+        const tile = event.target.closest('.image-config');
+        if (!tile) return;
+
+        const id = Number(tile.dataset.id);
+        if (!Number.isFinite(id)) return;
+
+        const multi = Boolean(event.ctrlKey || event.metaKey);
+        if (multi) {
+            const next = !this.selectedImages.has(id);
+            this.setImageSelected(id, next);
         } else {
-            // Normal click: just toggle this item
-            this.toggleImageSelection(id, isSelected);
+            // Desktop-like: click selects only this item.
+            this.clearSelection();
+            this.setImageSelected(id, true);
         }
-        
+
         this.lastSelectedId = id;
+        this.updateSelectionCount();
     }
 
-    selectRange(startId, endId, select = true) {
-        const imageIds = this.images.map(img => img.id);
-        const startIndex = imageIds.indexOf(startId);
-        const endIndex = imageIds.indexOf(endId);
-        
-        if (startIndex === -1 || endIndex === -1) return;
-        
-        const minIndex = Math.min(startIndex, endIndex);
-        const maxIndex = Math.max(startIndex, endIndex);
-        
-        for (let i = minIndex; i <= maxIndex; i++) {
-            const imageId = imageIds[i];
-            const checkbox = document.getElementById(`select-${imageId}`);
-            const config = document.querySelector(`[data-id="${imageId}"]`);
-            
-            if (select) {
-                this.selectedImages.add(imageId);
-                if (checkbox) checkbox.checked = true;
-                if (config) config.classList.add('selected');
-            } else {
-                this.selectedImages.delete(imageId);
-                if (checkbox) checkbox.checked = false;
-                if (config) config.classList.remove('selected');
+    handleImagesListDblClick(event) {
+        if (this.isInteractiveTarget(event.target)) return;
+        const tile = event.target.closest('.image-config');
+        if (!tile) return;
+        const id = Number(tile.dataset.id);
+        const img = this.images.find((x) => x.id === id);
+        if (!img) return;
+        this.showImageModal(img.dataUrl, img.name, `${img.originalWidth}x${img.originalHeight}`);
+    }
+
+    handleImagesListPointerDown(event) {
+        if (event.button !== 0) return;
+        if (this.isInteractiveTarget(event.target)) return;
+
+        const imagesList = document.getElementById('imagesList');
+        const box = document.getElementById('boxSelect');
+        if (!imagesList || !box) return;
+
+        // Only start box-select when clicking the background (not on a tile)
+        const tile = event.target.closest('.image-config');
+        if (tile) return;
+
+        const listRect = imagesList.getBoundingClientRect();
+        const startX = event.clientX;
+        const startY = event.clientY;
+
+        this._boxSelectState = {
+            active: true,
+            startX,
+            startY,
+            baseSelected: new Set(this.selectedImages),
+            multi: Boolean(event.ctrlKey || event.metaKey),
+            listRect
+        };
+
+        if (!this._boxSelectState.multi) {
+            this.clearSelection();
+            this.updateSelectionCount();
+        }
+
+        box.hidden = false;
+        box.style.left = `${startX - listRect.left + imagesList.scrollLeft}px`;
+        box.style.top = `${startY - listRect.top + imagesList.scrollTop}px`;
+        box.style.width = '0px';
+        box.style.height = '0px';
+
+        imagesList.setPointerCapture(event.pointerId);
+        imagesList.addEventListener('pointermove', this._handleBoxSelectMove);
+        imagesList.addEventListener('pointerup', this._handleBoxSelectUp);
+        imagesList.addEventListener('pointercancel', this._handleBoxSelectUp);
+
+        event.preventDefault();
+    }
+
+    _handleBoxSelectMove = (event) => {
+        const imagesList = document.getElementById('imagesList');
+        const box = document.getElementById('boxSelect');
+        if (!imagesList || !box || !this._boxSelectState?.active) return;
+
+        const { startX, startY, listRect, baseSelected, multi } = this._boxSelectState;
+
+        const currX = event.clientX;
+        const currY = event.clientY;
+
+        const left = Math.min(startX, currX);
+        const right = Math.max(startX, currX);
+        const top = Math.min(startY, currY);
+        const bottom = Math.max(startY, currY);
+
+        box.style.left = `${left - listRect.left + imagesList.scrollLeft}px`;
+        box.style.top = `${top - listRect.top + imagesList.scrollTop}px`;
+        box.style.width = `${right - left}px`;
+        box.style.height = `${bottom - top}px`;
+
+        const hit = new Set();
+        document.querySelectorAll('#imagesList .image-config').forEach((tile) => {
+            const r = tile.getBoundingClientRect();
+            const intersects = !(r.right < left || r.left > right || r.bottom < top || r.top > bottom);
+            if (intersects) {
+                const id = Number(tile.dataset.id);
+                if (Number.isFinite(id)) hit.add(id);
             }
-        }
-        
-        this.updateSelectionCount();
-    }
+        });
 
-    toggleImageSelection(id, isSelected) {
-        const config = document.querySelector(`[data-id="${id}"]`);
-        
-        if (isSelected) {
-            this.selectedImages.add(id);
-            config.classList.add('selected');
-        } else {
-            this.selectedImages.delete(id);
-            config.classList.remove('selected');
-        }
-        
+        const next = new Set(multi ? baseSelected : []);
+        for (const id of hit) next.add(id);
+        this.applySelectionSet(next);
         this.updateSelectionCount();
-    }
+    };
+
+    _handleBoxSelectUp = (event) => {
+        const imagesList = document.getElementById('imagesList');
+        const box = document.getElementById('boxSelect');
+        if (box) box.hidden = true;
+
+        if (imagesList) {
+            imagesList.removeEventListener('pointermove', this._handleBoxSelectMove);
+            imagesList.removeEventListener('pointerup', this._handleBoxSelectUp);
+            imagesList.removeEventListener('pointercancel', this._handleBoxSelectUp);
+        }
+
+        if (this._boxSelectState) this._boxSelectState.active = false;
+        this._boxSelectState = null;
+    };
 
     selectAllImages() {
         this.selectedImages.clear();
-        
         this.images.forEach(img => {
-            this.selectedImages.add(img.id);
-            const checkbox = document.getElementById(`select-${img.id}`);
-            const config = document.querySelector(`[data-id="${img.id}"]`);
-            
-            if (checkbox) checkbox.checked = true;
-            if (config) config.classList.add('selected');
+            this.setImageSelected(img.id, true);
         });
-        
         this.updateSelectionCount();
     }
 
     selectNoneImages() {
         this.selectedImages.clear();
-        
         this.images.forEach(img => {
-            const checkbox = document.getElementById(`select-${img.id}`);
             const config = document.querySelector(`[data-id="${img.id}"]`);
-            
-            if (checkbox) checkbox.checked = false;
             if (config) config.classList.remove('selected');
         });
-        
         this.updateSelectionCount();
     }
 
@@ -1325,6 +1430,7 @@ class SheetBuilder {
 
                     this.images.push(imageData);
                     this.renderImageConfig(imageData);
+                    this.updateImagesWindowState();
 
                     // Keep Fill-until-pages synced to the new minimum requirement.
                     this.setFillUntilPagesMin(this.computeMinimumPagesRequired());
@@ -2565,7 +2671,9 @@ class SheetBuilder {
     setExportButtonsDisabled(disabled) {
         const btns = [
             document.getElementById('exportPDF'),
-            document.getElementById('exportPDFBottom')
+            document.getElementById('exportPDFBottom'),
+            document.getElementById('exportPNG'),
+            document.getElementById('exportPNGBottom')
         ].filter(Boolean);
 
         for (const btn of btns) {
@@ -2795,6 +2903,129 @@ class SheetBuilder {
             };
             img.src = imgData.dataUrl;
         });
+    }
+
+    getPngResolutionDpi() {
+        const el = document.getElementById('pngResolution');
+        const val = parseInt(el?.value || '150', 10);
+        return Number.isFinite(val) && val > 0 ? val : 150;
+    }
+
+    async exportToPNG() {
+        if (this._exportState?.inProgress) return;
+        if (this.layout.length === 0) {
+            alert('Please generate a layout first!');
+            return;
+        }
+
+        const abortController = new AbortController();
+        this._exportState = { inProgress: true, abortController };
+
+        this.setExportButtonsDisabled(true);
+        const { cancelBtn } = this.getExportUi();
+        if (cancelBtn) {
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel';
+        }
+
+        const exportTitle = document.getElementById('exportTitle');
+        if (exportTitle) exportTitle.textContent = 'Exporting to PNG…';
+        this.setExportOverlayVisible(true);
+
+        const DPI = this.getPngResolutionDpi();
+        const PX_PER_MM = DPI / 25.4;
+        const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
+        const { enabled: bleedEnabled } = this.getBleedSettingsMm();
+
+        const totalImages = this.layout.reduce((sum, page) => sum + (page.images?.length || 0), 0);
+        let completed = 0;
+
+        const throwIfAborted = () => {
+            if (abortController.signal.aborted) throw new DOMException('Export canceled', 'AbortError');
+        };
+
+        try {
+            this.setExportProgress(0, totalImages, 'Preparing…');
+            throwIfAborted();
+
+            for (let pageIndex = 0; pageIndex < this.layout.length; pageIndex++) {
+                throwIfAborted();
+                const page = this.layout[pageIndex];
+                this.setExportProgress(completed, totalImages, `Rendering page ${pageIndex + 1}/${this.layout.length}…`);
+
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(paperWidth * PX_PER_MM);
+                canvas.height = Math.round(paperHeight * PX_PER_MM);
+                const ctx = canvas.getContext('2d');
+                // No background fill — transparent canvas so DTF printers don't burn white onto film
+
+                for (const img of page.images) {
+                    throwIfAborted();
+                    try {
+                        const imgEl = await this.loadImageElement(img.dataUrl);
+                        throwIfAborted();
+
+                        const bleedMm = Number.isFinite(img.bleedMarginMm) ? Math.max(0, img.bleedMarginMm) : 0;
+                        const innerW = Math.max(0, img.width - 2 * bleedMm);
+                        const innerH = Math.max(0, img.height - 2 * bleedMm);
+                        const destX = (outerMargin + img.x + bleedMm) * PX_PER_MM;
+                        const destY = (outerMargin + img.y + bleedMm) * PX_PER_MM;
+                        const destW = innerW * PX_PER_MM;
+                        const destH = innerH * PX_PER_MM;
+
+                        if (img.rotated) {
+                            ctx.save();
+                            ctx.translate(destX + destW / 2, destY + destH / 2);
+                            ctx.rotate(Math.PI / 2);
+                            ctx.drawImage(imgEl, -destH / 2, -destW / 2, destH, destW);
+                            ctx.restore();
+                        } else {
+                            ctx.drawImage(imgEl, destX, destY, destW, destH);
+                        }
+                    } catch (error) {
+                        if (error?.name === 'AbortError') throw error;
+                        console.error('Error drawing image to PNG canvas:', error);
+                    } finally {
+                        completed += 1;
+                        this.setExportProgress(completed, totalImages, `Rendering page ${pageIndex + 1}/${this.layout.length}…`);
+                    }
+                }
+
+                throwIfAborted();
+                this.setExportProgress(completed, totalImages, `Saving page ${pageIndex + 1}…`);
+
+                await new Promise((resolve, reject) => {
+                    canvas.toBlob(blob => {
+                        if (!blob) { reject(new Error('Failed to create PNG blob')); return; }
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = this.layout.length === 1
+                            ? 'sheetbuilder-layout.png'
+                            : `sheetbuilder-layout-page${pageIndex + 1}.png`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        resolve();
+                    }, 'image/png');
+                });
+            }
+
+            this.setExportProgress(totalImages, totalImages, 'Done');
+        } catch (error) {
+            if (error?.name === 'AbortError') {
+                this.setExportProgress(completed, totalImages, 'Canceled');
+                return;
+            }
+            console.error('PNG export failed:', error);
+            alert('PNG export failed. Please try again.');
+        } finally {
+            if (exportTitle) exportTitle.textContent = 'Exporting to PDF…';
+            window.setTimeout(() => { this.setExportOverlayVisible(false); }, 150);
+            this.setExportButtonsDisabled(false);
+            this._exportState = { inProgress: false, abortController: null };
+        }
     }
 }
 
