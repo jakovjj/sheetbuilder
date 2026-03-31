@@ -1205,6 +1205,14 @@ h2 {
     text-align: center;
 }
 
+.preview-export-btns {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 16px;
+}
+
 .actions-controls {
     margin-top: 16px;
     display: flex;

@@ -217,23 +217,6 @@
                     <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-bullseye"></i></span>
                     Generate Layout
                 </button>
-                <button id="exportPDF" class="action-btn secondary">
-                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
-                    Export to PDF
-                </button>
-                <button id="exportPNG" class="action-btn secondary">
-                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
-                    Export to PNG
-                </button>
-
-                <div class="actions-controls" aria-label="Export options">
-                    <div class="actions-control-group">
-                        <input type="checkbox" id="fillUntilPagesEnabled">
-                        <label for="fillUntilPages">Fill until pages:</label>
-                        <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*">
-                    </div>
-                    <small class="actions-control-help">During export, repeats the layout until this page count is reached (minimum is the pages required).</small>
-                </div>
             </section>
 
             <!-- Loading Overlay -->
@@ -259,19 +242,30 @@
                 </div>
             </div>
 
-            <section id="preview" class="preview-section">
+            <section id="preview" class="preview-section hidden">
                 <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-eye"></i></span>Layout Preview</h2>
                 <div id="layoutPreview" class="layout-preview"></div>
                 <div id="layoutStats" class="layout-stats"></div>
 
-                <button id="exportPDFBottom" class="action-btn secondary">
-                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
-                    Export to PDF
-                </button>
-                <button id="exportPNGBottom" class="action-btn secondary">
-                    <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
-                    Export to PNG
-                </button>
+                <div class="actions-controls" aria-label="Export options">
+                    <div class="actions-control-group">
+                        <input type="checkbox" id="fillUntilPagesEnabled">
+                        <label for="fillUntilPages">Fill until pages:</label>
+                        <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*">
+                    </div>
+                    <small class="actions-control-help">During export, repeats the layout until this page count is reached (minimum is the pages required).</small>
+                </div>
+
+                <div class="preview-export-btns">
+                    <button id="exportPDFBottom" class="action-btn secondary">
+                        <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
+                        Export to PDF
+                    </button>
+                    <button id="exportPNGBottom" class="action-btn secondary">
+                        <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
+                        Export to PNG
+                    </button>
+                </div>
             </section>
         </main>
         

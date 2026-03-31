@@ -530,7 +530,6 @@ class SheetBuilder {
     initializeEventListeners() {
         const imageInput = document.getElementById('imageInput');
         const generateBtn = document.getElementById('generateLayout');
-        const exportBtn = document.getElementById('exportPDF');
         const exportBtnBottom = document.getElementById('exportPDFBottom');
         const quickCropImagesBtn = document.getElementById('quickCropImages');
         const paperSize = document.getElementById('paperSize');
@@ -561,7 +560,6 @@ class SheetBuilder {
 
         imageInput.addEventListener('change', (e) => this.handleImageUpload(e));
         generateBtn.addEventListener('click', () => this.generateLayout());
-        exportBtn.addEventListener('click', () => this.exportToPDF());
         if (exportBtnBottom) exportBtnBottom.addEventListener('click', () => this.exportToPDF());
 
         const exportPNGBtn = document.getElementById('exportPNG');
@@ -1790,6 +1788,7 @@ class SheetBuilder {
         this.lastPreviewParams = { paperWidth, paperHeight, outerMargin };
         this.updateLayoutStats();
 
+        document.getElementById('preview')?.classList.remove('hidden');
         this.setExportButtonsDisabled(false);
     }
 
@@ -2670,9 +2669,7 @@ class SheetBuilder {
 
     setExportButtonsDisabled(disabled) {
         const btns = [
-            document.getElementById('exportPDF'),
             document.getElementById('exportPDFBottom'),
-            document.getElementById('exportPNG'),
             document.getElementById('exportPNGBottom')
         ].filter(Boolean);
 
@@ -2690,7 +2687,6 @@ class SheetBuilder {
             return;
         }
 
-        const exportBtn = document.getElementById('exportPDF');
         const { cancelBtn } = this.getExportUi();
         const abortController = new AbortController();
         this._exportState = {
