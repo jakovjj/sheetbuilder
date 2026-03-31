@@ -4,6 +4,10 @@
     box-sizing: border-box;
 }
 
+.hidden {
+    display: none !important;
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
@@ -20,7 +24,7 @@ body {
 
 header.site-header {
     text-align: center;
-    padding: clamp(6px, 0.8vw, 10px) 0;
+    padding: 8px 0;
     background: linear-gradient(135deg, #dc2626, #b91c1c);
     border-radius: 0 0 16px 16px;
     color: white;
@@ -52,12 +56,12 @@ header.site-header .header-logo {
 }
 
 header.site-header .title-section h1 {
-    font-size: clamp(1.2rem, 1.8vw, 1.75rem);
-    margin: 0 0 4px 0;
+    font-size: 1.4rem;
+    margin: 0 0 2px 0;
 }
 
 header.site-header .title-section p {
-    font-size: clamp(0.8rem, 1vw, 0.95rem);
+    font-size: 0.85rem;
 }
 
 header.site-header .container {
@@ -125,7 +129,7 @@ header.site-header .container {
 }
 
 .header-brand-image {
-    max-height: clamp(40px, 5vw, 68px);
+    max-height: 52px;
     width: auto;
     display: block;
 }
@@ -184,15 +188,15 @@ header.site-header .container {
 
 .title-section h1 {
     color: white;
-    font-size: 2.8rem;
+    font-size: 1.4rem;
     font-weight: 700;
-    margin: 0 0 10px 0;
+    margin: 0 0 2px 0;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .title-section p {
     color: rgba(255, 255, 255, 0.9);
-    font-size: 1.2rem;
+    font-size: 0.85rem;
     font-weight: 300;
     margin: 0;
 }
@@ -578,9 +582,9 @@ h2 {
     justify-content: flex-start;
     padding: 12px;
     cursor: default;
-    min-height: 320px;
-    height: 680px;
-    max-height: 70vh;
+    min-height: 220px;
+    height: 420px;
+    max-height: 55vh;
 }
 
 .file-upload.images-window #imageInput {

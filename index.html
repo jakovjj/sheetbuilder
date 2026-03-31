@@ -196,6 +196,15 @@
                     </div>
 
                     <div class="setting-group">
+                        <label for="fillUntilPagesEnabled">Fill Until Pages:</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="fillUntilPagesEnabled">
+                            <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*" style="width:72px">
+                        </div>
+                        <small>During export, repeats the layout until this page count is reached.</small>
+                    </div>
+
+                    <div class="setting-group">
                         <label for="bleedLinesEnabled">Bleed Settings:</label>
                         <div class="bleed-setting-row">
                             <div class="checkbox-group bleed-setting-toggle">
@@ -247,21 +256,12 @@
                 <div id="layoutPreview" class="layout-preview"></div>
                 <div id="layoutStats" class="layout-stats"></div>
 
-                <div class="actions-controls" aria-label="Export options">
-                    <div class="actions-control-group">
-                        <input type="checkbox" id="fillUntilPagesEnabled">
-                        <label for="fillUntilPages">Fill until pages:</label>
-                        <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*">
-                    </div>
-                    <small class="actions-control-help">During export, repeats the layout until this page count is reached (minimum is the pages required).</small>
-                </div>
-
                 <div class="preview-export-btns">
-                    <button id="exportPDFBottom" class="action-btn secondary">
+                    <button id="exportPDFBottom" class="action-btn secondary" disabled>
                         <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
                         Export to PDF
                     </button>
-                    <button id="exportPNGBottom" class="action-btn secondary">
+                    <button id="exportPNGBottom" class="action-btn secondary" disabled>
                         <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
                         Export to PNG
                     </button>
