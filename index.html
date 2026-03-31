@@ -68,7 +68,6 @@
                     <div class="title-row">
                         <img src="logo.png" alt="SheetBuilder" class="header-brand-image" onerror="this.style.display='none'">
                     </div>
-                    <p>Free smart image layout for optimal printing (gang sheets, DTF and more)</p>
                 </div>
 
                 <div class="header-controls" aria-label="Units">
@@ -113,14 +112,26 @@
                         <div id="boxSelect" class="box-select" hidden aria-hidden="true"></div>
 
                         <div class="images-window-footer" id="imagesWindowFooter">
-                            <label for="imageInput" class="upload-btn" aria-label="Add more images">
-                                <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
-                                Add Images
-                            </label>
+                            <div class="footer-actions-row">
+                                <label for="imageInput" class="footer-action-btn" aria-label="Add more images">
+                                    <i class="fa-solid fa-paperclip"></i> Add Images
+                                </label>
+                                <button type="button" id="footerSelectAll" class="footer-action-btn">
+                                    <i class="fa-solid fa-object-group"></i> Select All
+                                </button>
+                                <button type="button" id="footerDeleteAll" class="footer-action-btn">
+                                    <i class="fa-solid fa-trash"></i> Delete All
+                                </button>
+                            </div>
                             <div id="uploadStatus" class="upload-status" hidden aria-live="polite"></div>
                         </div>
                     </div>
                 </div>
+
+                <details class="upload-tutorial">
+                    <summary>How it works?</summary>
+                    <p>Upload as many images as you want. Each image shows a width and height field you can edit freely. Changing either dimension will automatically adjust the other to keep the original aspect ratio. You can also select multiple images at once, then edit any field to update all selected images at the same time.</p>
+                </details>
             </section>
 
             <section id="settings" class="settings-section">
@@ -190,8 +201,10 @@
                         <label for="pngResolution">PNG Export Resolution:</label>
                         <select id="pngResolution">
                             <option value="72">72 DPI (screen)</option>
-                            <option value="150" selected>150 DPI (standard)</option>
-                            <option value="300">300 DPI (print quality)</option>
+                            <option value="150">150 DPI (standard)</option>
+                            <option value="300" selected>300 DPI (print quality)</option>
+                            <option value="600">600 DPI (high quality)</option>
+                            <option value="1200">1200 DPI (ultra quality)</option>
                         </select>
                         <small>Used when exporting to PNG. Higher = larger file.</small>
                     </div>

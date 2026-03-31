@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/malicomrade/.claude/projects/c--Users-malicomrade-Downloads-dev_root-fitprint/memory/**)"
+    ]
+  }
+}

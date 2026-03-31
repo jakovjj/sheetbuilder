@@ -619,6 +619,12 @@ class SheetBuilder {
         // Quick selection event listeners
         if (quickSelectAllBtn) quickSelectAllBtn.addEventListener('click', () => this.selectAllImages());
         if (quickSelectNoneBtn) quickSelectNoneBtn.addEventListener('click', () => this.selectNoneImages());
+
+        // Footer action buttons
+        const footerSelectAllBtn = document.getElementById('footerSelectAll');
+        const footerDeleteAllBtn = document.getElementById('footerDeleteAll');
+        if (footerSelectAllBtn) footerSelectAllBtn.addEventListener('click', () => this.selectAllImages());
+        if (footerDeleteAllBtn) footerDeleteAllBtn.addEventListener('click', () => this.deleteAllImages());
         
         // Bulk input listeners for real-time ratio locking
         if (bulkWidth) bulkWidth.addEventListener('input', (e) => this.handleBulkWidthChange(e));
@@ -821,21 +827,22 @@ class SheetBuilder {
         config.innerHTML = `
             <div class="image-thumb" title="${imageData.name}">
                 <img src="${imageData.dataUrl}" alt="${imageData.name}">
-                <button class="image-remove-btn" onclick="sheetBuilder.removeImage(${imageData.id})" title="Remove image">✕</button>
             </div>
             <div class="image-bar">
-                <label><span>W</span>
-                    <input data-field="width" type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
-                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)">
-                </label>
-                <label><span>H</span>
-                    <input data-field="height" type="number" value="${this.formatLengthValue(imageData.height)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
-                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)">
-                </label>
-                <label><span>copies</span>
-                    <input data-field="copies" type="number" value="${imageData.copies}" min="1"
-                           onchange="sheetBuilder.updateImageSize(${imageData.id}, 'copies', this.value)">
-                </label>
+                <input data-field="width" type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
+                       onchange="sheetBuilder.updateImageSize(${imageData.id}, 'width', this.value)"
+                       onkeydown="if(event.key==='Enter'){this.blur();}">
+                <span class="size-sep">×</span>
+                <input data-field="height" type="number" value="${this.formatLengthValue(imageData.height)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
+                       onchange="sheetBuilder.updateImageSize(${imageData.id}, 'height', this.value)"
+                       onkeydown="if(event.key==='Enter'){this.blur();}">
+            </div>
+            <div class="image-bar image-bar-actions">
+                <span class="copies-label">Copies</span>
+                <input data-field="copies" type="number" value="${imageData.copies}" min="1"
+                       onchange="sheetBuilder.updateImageSize(${imageData.id}, 'copies', this.value)"
+                       onkeydown="if(event.key==='Enter'){this.blur();}">
+                <button class="img-delete-btn" title="Remove image" onclick="event.stopPropagation(); sheetBuilder.removeImage(${imageData.id})"><i class="fa-solid fa-trash"></i></button>
             </div>
         `;
         list.appendChild(config);
@@ -849,18 +856,16 @@ class SheetBuilder {
     }
 
     removeImage(id) {
-        // Remove from images array
-        this.images = this.images.filter(img => img.id !== id);
-        
-        // Remove from selected images
-        this.selectedImages.delete(id);
-        
-        // Remove from DOM
-        const config = document.querySelector(`[data-id="${id}"]`);
-        if (config) {
-            config.remove();
-        }
-        
+        const applyMulti = this.selectedImages.size > 1 && this.selectedImages.has(id);
+        const targetIds = applyMulti ? Array.from(this.selectedImages) : [id];
+
+        targetIds.forEach(targetId => {
+            this.images = this.images.filter(img => img.id !== targetId);
+            this.selectedImages.delete(targetId);
+            const config = document.querySelector(`[data-id="${targetId}"]`);
+            if (config) config.remove();
+        });
+
         // Update UI
         this.updateQuickSelectionControls();
         this.updateSelectionCount();
@@ -870,35 +875,43 @@ class SheetBuilder {
     }
 
     updateImageSize(id, property, value) {
-        const image = this.images.find(img => img.id === id);
-        if (image) {
-            const numValue = property === 'copies' ? parseFloat(value) : this.parseLengthFromInputValue(value);
-            
+        const numValue = property === 'copies' ? parseFloat(value) : this.parseLengthFromInputValue(value);
+
+        const applyMulti = this.selectedImages.size > 1 && this.selectedImages.has(id);
+        const targetIds = applyMulti ? Array.from(this.selectedImages) : [id];
+
+        for (const targetId of targetIds) {
+            const image = this.images.find(img => img.id === targetId);
+            if (!image) continue;
+
             if (property === 'width') {
                 image.width = numValue;
-                // Maintain aspect ratio
                 image.height = numValue / image.aspectRatio;
-                // Update the height input field
-                const config = document.querySelector(`[data-id="${id}"]`);
-                const heightInput = config.querySelector('input[data-field="height"]');
-                heightInput.value = this.formatLengthValue(image.height);
+                const config = document.querySelector(`[data-id="${targetId}"]`);
+                if (config) {
+                    config.querySelector('input[data-field="width"]').value = this.formatLengthValue(image.width);
+                    config.querySelector('input[data-field="height"]').value = this.formatLengthValue(image.height);
+                }
             } else if (property === 'height') {
                 image.height = numValue;
-                // Maintain aspect ratio
                 image.width = numValue * image.aspectRatio;
-                // Update the width input field
-                const config = document.querySelector(`[data-id="${id}"]`);
-                const widthInput = config.querySelector('input[data-field="width"]');
-                widthInput.value = this.formatLengthValue(image.width);
+                const config = document.querySelector(`[data-id="${targetId}"]`);
+                if (config) {
+                    config.querySelector('input[data-field="height"]').value = this.formatLengthValue(image.height);
+                    config.querySelector('input[data-field="width"]').value = this.formatLengthValue(image.width);
+                }
             } else {
                 image[property] = numValue;
+                if (applyMulti && targetId !== id) {
+                    const config = document.querySelector(`[data-id="${targetId}"]`);
+                    if (config) config.querySelector(`input[data-field="${property}"]`).value = numValue;
+                }
             }
-            
-            // Real-time validation
-            this.validateImageInRealTime(image);
 
-            this.markLayoutStale();
+            this.validateImageInRealTime(image);
         }
+
+        this.markLayoutStale();
     }
 
     validateImageInRealTime(image) {
@@ -1126,6 +1139,14 @@ class SheetBuilder {
 
         if (confirm(`Remove ${this.selectedImages.size} selected image(s)?`)) {
             const idsToRemove = Array.from(this.selectedImages);
+            idsToRemove.forEach(id => this.removeImage(id));
+        }
+    }
+
+    deleteAllImages() {
+        if (this.images.length === 0) return;
+        if (confirm(`Are you sure you want to delete all ${this.images.length} image(s)?`)) {
+            const idsToRemove = this.images.map(img => img.id);
             idsToRemove.forEach(id => this.removeImage(id));
         }
     }
@@ -2907,8 +2928,8 @@ class SheetBuilder {
 
     getPngResolutionDpi() {
         const el = document.getElementById('pngResolution');
-        const val = parseInt(el?.value || '150', 10);
-        return Number.isFinite(val) && val > 0 ? val : 150;
+        const val = parseInt(el?.value || '300', 10);
+        return Number.isFinite(val) && val > 0 ? val : 300;
     }
 
     async exportToPNG() {
