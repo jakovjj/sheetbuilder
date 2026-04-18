@@ -1,4 +1,5 @@
 const MM_PER_INCH = 25.4;
+const INFINITE_HEIGHT_CAP_MM = 20000;
 
 class SheetBuilder {
     constructor() {
@@ -599,10 +600,12 @@ class SheetBuilder {
 
         if (fillUntilPagesEnabled) {
             fillUntilPagesEnabled.addEventListener('change', () => {
-                // Refresh minimum; toggling fill on/off affects layout behavior.
+                if (fillUntilPagesEnabled.checked && this.isInfiniteHeight()) {
+                    fillUntilPagesEnabled.checked = false;
+                    this.showInfoModal('Disable Auto Height before enabling Fill Until Pages.');
+                    return;
+                }
                 this.setFillUntilPagesMin(this.computeMinimumPagesRequired());
-
-                // Do not apply fill until the user regenerates the layout.
                 this.markLayoutStale({ resetFillUntilPages: false });
             });
         }
@@ -667,6 +670,29 @@ class SheetBuilder {
         paperHeight.addEventListener('change', () => {
             this.markLayoutStale({ resetFillUntilPages: true });
         });
+
+        const infiniteHeightCb = document.getElementById('infiniteHeight');
+        if (infiniteHeightCb) {
+            infiniteHeightCb.addEventListener('change', () => {
+                const isInfinite = infiniteHeightCb.checked;
+                if (isInfinite && this.isFillUntilEnabled()) {
+                    infiniteHeightCb.checked = false;
+                    this.showInfoModal('Disable Fill Until Pages before enabling Auto Height.');
+                    return;
+                }
+                if (isInfinite) {
+                    paperHeight._savedValue = paperHeight.value;
+                    paperHeight.value = '';
+                    paperHeight.placeholder = 'Auto';
+                } else {
+                    paperHeight.value = paperHeight._savedValue ?? '';
+                    paperHeight.placeholder = '';
+                }
+                paperHeight.disabled = isInfinite;
+                this.validateAllImages();
+                this.markLayoutStale({ resetFillUntilPages: true });
+            });
+        }
         outerMargin.addEventListener('input', () => {
             this.validateAllImages();
             this.markLayoutStale({ resetFillUntilPages: false });
@@ -720,6 +746,32 @@ class SheetBuilder {
 
     isSeparateByImageSizeEnabled() {
         return Boolean(document.getElementById('separateByImageSize')?.checked);
+    }
+
+    isInfiniteHeight() {
+        return Boolean(document.getElementById('infiniteHeight')?.checked);
+    }
+
+    showInfoModal(message) {
+        const modal = document.getElementById('infoModal');
+        const msg = document.getElementById('infoModalMessage');
+        const ok = document.getElementById('infoModalOk');
+        if (!modal || !msg || !ok) return;
+        msg.textContent = message;
+        modal.classList.remove('hidden');
+        const close = () => {
+            modal.classList.add('hidden');
+            ok.removeEventListener('click', close);
+        };
+        ok.addEventListener('click', close);
+    }
+
+    computePageActualHeight(page, outerMargin) {
+        let maxBottom = 0;
+        for (const img of page.images) {
+            maxBottom = Math.max(maxBottom, img.y + img.height);
+        }
+        return outerMargin + maxBottom + outerMargin;
     }
 
     getImageSizeKeyForGrouping(img) {
@@ -917,15 +969,16 @@ class SheetBuilder {
     validateImageInRealTime(image) {
         const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
         const { marginMm: bleedMm } = this.getBleedSettingsMm();
+        const infiniteHeight = this.isInfiniteHeight();
 
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
-        
+
         const printableWidth = paperWidth - (2 * outerMargin);
-        const printableHeight = paperHeight - (2 * outerMargin);
-        
+        const printableHeight = infiniteHeight ? Infinity : (paperHeight - (2 * outerMargin));
+
         const config = document.querySelector(`[data-id="${image.id}"]`);
-        if (!config) return; // Safety check
-        
+        if (!config) return;
+
         const existingWarning = config.querySelector('.size-warning');
 
         if (paperIssue) {
@@ -937,7 +990,7 @@ class SheetBuilder {
             config.appendChild(warning);
             return;
         }
-        
+
         const effectiveW = image.width + (2 * bleedMm);
         const effectiveH = image.height + (2 * bleedMm);
 
@@ -965,10 +1018,11 @@ class SheetBuilder {
     }
 
     getPaperSettingsIssue(paperWidth, paperHeight, outerMargin) {
-        if (!Number.isFinite(paperWidth) || !Number.isFinite(paperHeight) || !Number.isFinite(outerMargin)) {
+        const infiniteHeight = this.isInfiniteHeight();
+        if (!Number.isFinite(paperWidth) || (!infiniteHeight && !Number.isFinite(paperHeight)) || !Number.isFinite(outerMargin)) {
             return 'Invalid paper settings.';
         }
-        if (paperWidth <= 0 || paperHeight <= 0) {
+        if (paperWidth <= 0 || (!infiniteHeight && paperHeight <= 0)) {
             return 'Paper width/height must be greater than 0.';
         }
         if (outerMargin < 0) {
@@ -976,7 +1030,7 @@ class SheetBuilder {
         }
 
         const printableWidth = paperWidth - (2 * outerMargin);
-        const printableHeight = paperHeight - (2 * outerMargin);
+        const printableHeight = infiniteHeight ? INFINITE_HEIGHT_CAP_MM : (paperHeight - (2 * outerMargin));
         if (printableWidth <= 0 || printableHeight <= 0) {
             return `Outer margin is too large for the selected paper size (printable area would be ${this.formatSizePair(printableWidth, printableHeight)}). Reduce the outer margin or increase paper size.`;
         }
@@ -1663,6 +1717,7 @@ class SheetBuilder {
         const { paperWidth, paperHeight, outerMargin, innerMargin } = this.getPaperSettingsMm();
         const { marginMm: bleedMm } = this.getBleedSettingsMm();
         const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
+        const infiniteHeight = this.isInfiniteHeight();
 
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
         if (paperIssue) {
@@ -1670,23 +1725,28 @@ class SheetBuilder {
             return;
         }
 
-        // Calculate printable area
+        // Calculate printable area (infinite mode uses cap for packing)
         const printableWidth = paperWidth - (2 * outerMargin);
-        const printableHeight = paperHeight - (2 * outerMargin);
+        const packingPrintableHeight = infiniteHeight
+            ? (INFINITE_HEIGHT_CAP_MM - (2 * outerMargin))
+            : (paperHeight - (2 * outerMargin));
 
         // Validate that all images can fit on the paper
         // (If rotation is disabled, they must fit in their current orientation.)
-        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight, bleedMm);
+        const oversizedImages = this.validateImageSizes(printableWidth, packingPrintableHeight, bleedMm);
         if (oversizedImages.length > 0) {
-            this.showOversizedWarning(oversizedImages, printableWidth, printableHeight);
+            this.showOversizedWarning(oversizedImages, printableWidth, packingPrintableHeight);
             return;
         }
 
         if (!allowRotation) {
-            const requiresRotation = this.images.filter(img => (img.width + (2 * bleedMm)) > printableWidth || (img.height + (2 * bleedMm)) > printableHeight);
+            const requiresRotation = this.images.filter(img =>
+                (img.width + (2 * bleedMm)) > printableWidth ||
+                (!infiniteHeight && (img.height + (2 * bleedMm)) > packingPrintableHeight)
+            );
             if (requiresRotation.length > 0) {
                 let warningMessage = `WARNING: Rotation is disabled, but some images only fit when rotated:\n\n`;
-                warningMessage += `Printable area: ${this.formatLengthValue(printableWidth)}${this.getUnitLabel()} × ${this.formatLengthValue(printableHeight)}${this.getUnitLabel()}\n\n`;
+                warningMessage += `Printable area: ${this.formatLengthValue(printableWidth)}${this.getUnitLabel()} × ${infiniteHeight ? '∞' : this.formatLengthValue(packingPrintableHeight)}${this.getUnitLabel()}\n\n`;
                 requiresRotation.forEach(img => {
                     warningMessage += `• ${img.name}: ${this.formatLengthValue(img.width)}${this.getUnitLabel()} × ${this.formatLengthValue(img.height)}${this.getUnitLabel()}\n`;
                 });
@@ -1720,7 +1780,7 @@ class SheetBuilder {
         });
 
         // 1) Pack the requested set to find the true minimum pages.
-        const baseLayout = this.packImagesRespectingSizeGroups(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        const baseLayout = this.packImagesRespectingSizeGroups(requestedImages, printableWidth, packingPrintableHeight, innerMargin, allowRotation);
         const minPages = Math.max(1, baseLayout.length);
 
         // Keep the input's minimum synced, without overwriting larger user-entered values.
@@ -1751,7 +1811,7 @@ class SheetBuilder {
 
             const packWithDuplicateSets = (duplicateSets) => {
                 const expanded = buildExpanded(duplicateSets);
-                return this.packImagesRespectingSizeGroups(expanded, printableWidth, printableHeight, innerMargin, allowRotation);
+                return this.packImagesRespectingSizeGroups(expanded, printableWidth, packingPrintableHeight, innerMargin, allowRotation);
             };
 
             // Heuristic cap to avoid runaway loops on extremely tiny items.
@@ -1761,7 +1821,7 @@ class SheetBuilder {
                 const a = (w + innerMargin) * (h + innerMargin);
                 return sum + (Number.isFinite(a) ? a : 0);
             }, 0);
-            const pageArea = (Number.isFinite(printableWidth) && Number.isFinite(printableHeight)) ? (printableWidth * printableHeight) : NaN;
+            const pageArea = (Number.isFinite(printableWidth) && Number.isFinite(packingPrintableHeight)) ? (printableWidth * packingPrintableHeight) : NaN;
             const maxDuplicateSetsCap = (() => {
                 if (!Number.isFinite(pageArea) || pageArea <= 0) return 5000;
                 if (!Number.isFinite(estimatedRosterArea) || estimatedRosterArea <= 0) return 5000;
@@ -1805,12 +1865,30 @@ class SheetBuilder {
 
             this.layout = bestLayout;
         }
-        
+
+        // For infinite height, compute and store the actual tight height per page.
+        if (infiniteHeight) {
+            for (const page of this.layout) {
+                page.computedPaperHeight = Math.min(
+                    INFINITE_HEIGHT_CAP_MM,
+                    Math.max(this.computePageActualHeight(page, outerMargin), outerMargin * 2 + 1)
+                );
+            }
+        } else {
+            for (const page of this.layout) {
+                delete page.computedPaperHeight;
+            }
+        }
+
+        const effectiveDisplayHeight = infiniteHeight
+            ? (this.layout[0]?.computedPaperHeight ?? paperHeight)
+            : paperHeight;
+
         const previewSection = document.getElementById('preview');
         previewSection?.classList.remove('hidden');
 
-        this.renderLayoutPreview(paperWidth, paperHeight, outerMargin);
-        this.lastPreviewParams = { paperWidth, paperHeight, outerMargin };
+        this.renderLayoutPreview(paperWidth, effectiveDisplayHeight, outerMargin);
+        this.lastPreviewParams = { paperWidth, paperHeight: effectiveDisplayHeight, outerMargin };
         this.updateLayoutStats();
 
         this.setExportButtonsDisabled(false);
@@ -1818,34 +1896,36 @@ class SheetBuilder {
     }
 
     validateImageSizes(printableWidth, printableHeight, bleedMm = 0) {
+        const infiniteHeight = this.isInfiniteHeight();
         const oversizedImages = [];
 
         // If printable area is invalid, treat all images as oversized.
-        if (!Number.isFinite(printableWidth) || !Number.isFinite(printableHeight) || printableWidth <= 0 || printableHeight <= 0) {
+        if (!Number.isFinite(printableWidth) || (!infiniteHeight && !Number.isFinite(printableHeight)) || printableWidth <= 0 || (!infiniteHeight && printableHeight <= 0)) {
             return this.images.map(img => ({
                 ...img,
                 maxWidth: 0,
                 maxHeight: 0
             }));
         }
-        
+
         const safeBleed = Number.isFinite(bleedMm) ? Math.max(0, bleedMm) : 0;
+        const effectivePrintableH = infiniteHeight ? Infinity : printableHeight;
 
         this.images.forEach(img => {
             const effectiveW = img.width + (2 * safeBleed);
             const effectiveH = img.height + (2 * safeBleed);
-            const canFitNormal = effectiveW <= printableWidth && effectiveH <= printableHeight;
-            const canFitRotated = effectiveH <= printableWidth && effectiveW <= printableHeight;
-            
+            const canFitNormal = effectiveW <= printableWidth && effectiveH <= effectivePrintableH;
+            const canFitRotated = effectiveH <= printableWidth && effectiveW <= effectivePrintableH;
+
             if (!canFitNormal && !canFitRotated) {
                 oversizedImages.push({
                     ...img,
-                    maxWidth: Math.max(0, Math.max(printableWidth, printableHeight)),
-                    maxHeight: Math.max(0, Math.min(printableWidth, printableHeight))
+                    maxWidth: Math.max(0, printableWidth),
+                    maxHeight: Math.max(0, infiniteHeight ? printableWidth : Math.min(printableWidth, printableHeight))
                 });
             }
         });
-        
+
         return oversizedImages;
     }
 
@@ -2526,12 +2606,12 @@ class SheetBuilder {
         preview.innerHTML = '';
 
         this.layout.forEach((page, index) => {
+            const effectivePaperHeight = page.computedPaperHeight ?? paperHeight;
             const pageDiv = document.createElement('div');
             pageDiv.className = 'page-preview';
-            
-            const aspectRatio = paperWidth / paperHeight;
-            // Dynamic sizing based on container width and aspect ratio
-            const containerWidth = Math.min(300, window.innerWidth * 0.25); // Max 300px or 25% of screen width
+
+            const aspectRatio = paperWidth / effectivePaperHeight;
+            const containerWidth = Math.min(300, window.innerWidth * 0.25);
             const previewWidth = containerWidth;
             const previewHeight = previewWidth / aspectRatio;
             const scale = previewWidth / paperWidth;
@@ -2551,15 +2631,23 @@ class SheetBuilder {
 
             preview.appendChild(pageDiv);
 
-            // Draw asynchronously so the UI remains responsive.
-            this.drawPagePreviewToCanvas(canvas, page, paperWidth, paperHeight, outerMargin, scale);
+            this.drawPagePreviewToCanvas(canvas, page, paperWidth, effectivePaperHeight, outerMargin, scale);
         });
     }
 
     updateLayoutStats() {
         const totalImages = this.layout.reduce((sum, page) => sum + (page.images?.length || 0), 0);
         const totalPages = this.layout.length;
-        const imagesPerPage = totalPages > 0 ? (totalImages / totalPages).toFixed(1) : 0;
+        const infiniteHeight = this.isInfiniteHeight();
+
+        const secondStat = (() => {
+            if (infiniteHeight && totalPages === 1) {
+                const h = this.layout[0]?.computedPaperHeight;
+                const value = Number.isFinite(h) ? this.formatLengthValue(h) + this.getUnitLabel() : '—';
+                return `<div class="stat-value">${value}</div><div class="stat-label">Sheet Height</div>`;
+            }
+            return `<div class="stat-value">${totalPages}</div><div class="stat-label">Pages Required</div>`;
+        })();
 
         const stats = document.getElementById('layoutStats');
         stats.innerHTML = `
@@ -2569,8 +2657,7 @@ class SheetBuilder {
                     <div class="stat-label">Total Images</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">${totalPages}</div>
-                    <div class="stat-label">Pages Required</div>
+                    ${secondStat}
                 </div>
             </div>
         `;
@@ -2638,18 +2725,24 @@ class SheetBuilder {
         const { paperWidth, paperHeight, outerMargin, innerMargin } = this.getPaperSettingsMm();
         const { marginMm: bleedMm } = this.getBleedSettingsMm();
         const allowRotation = Boolean(document.getElementById('rotateImages')?.checked);
+        const infiniteHeight = this.isInfiniteHeight();
         const paperIssue = this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin);
         if (paperIssue) return 1;
 
         const printableWidth = paperWidth - (2 * outerMargin);
-        const printableHeight = paperHeight - (2 * outerMargin);
-        if (!Number.isFinite(printableWidth) || !Number.isFinite(printableHeight) || printableWidth <= 0 || printableHeight <= 0) return 1;
+        const packingPrintableHeight = infiniteHeight
+            ? (INFINITE_HEIGHT_CAP_MM - (2 * outerMargin))
+            : (paperHeight - (2 * outerMargin));
+        if (!Number.isFinite(printableWidth) || !Number.isFinite(packingPrintableHeight) || printableWidth <= 0 || packingPrintableHeight <= 0) return 1;
 
-        const oversizedImages = this.validateImageSizes(printableWidth, printableHeight, bleedMm);
+        const oversizedImages = this.validateImageSizes(printableWidth, packingPrintableHeight, bleedMm);
         if (oversizedImages.length > 0) return 1;
 
         if (!allowRotation) {
-            const requiresRotation = this.images.filter(img => (img.width + (2 * bleedMm)) > printableWidth || (img.height + (2 * bleedMm)) > printableHeight);
+            const requiresRotation = this.images.filter(img =>
+                (img.width + (2 * bleedMm)) > printableWidth ||
+                (!infiniteHeight && (img.height + (2 * bleedMm)) > packingPrintableHeight)
+            );
             if (requiresRotation.length > 0) return 1;
         }
 
@@ -2671,7 +2764,7 @@ class SheetBuilder {
             }
         });
 
-        const layout = this.packImagesRespectingSizeGroups(requestedImages, printableWidth, printableHeight, innerMargin, allowRotation);
+        const layout = this.packImagesRespectingSizeGroups(requestedImages, printableWidth, packingPrintableHeight, innerMargin, allowRotation);
         return Math.max(1, layout.length);
     }
 
@@ -2732,10 +2825,13 @@ class SheetBuilder {
         const { enabled: bleedEnabled } = this.getBleedSettingsMm();
         const { outputFormat, jsPdfCompression, jpegQuality } = this.getPdfCompressionOptions();
 
+        const getPageHeight = (page) => page.computedPaperHeight ?? paperHeight;
+        const firstPageHeight = getPageHeight(this.layout[0]);
+
         const pdf = new jsPDF({
-            orientation: paperWidth > paperHeight ? 'landscape' : 'portrait',
+            orientation: paperWidth > firstPageHeight ? 'landscape' : 'portrait',
             unit: 'mm',
-            format: [paperWidth, paperHeight]
+            format: [paperWidth, firstPageHeight]
         });
 
         const totalImages = this.layout.reduce((sum, page) => sum + (page.images?.length || 0), 0);
@@ -2753,11 +2849,11 @@ class SheetBuilder {
 
             for (let pageIndex = 0; pageIndex < this.layout.length; pageIndex++) {
                 throwIfAborted();
+                const page = this.layout[pageIndex];
                 if (pageIndex > 0) {
-                    pdf.addPage();
+                    pdf.addPage([paperWidth, getPageHeight(page)]);
                 }
 
-                const page = this.layout[pageIndex];
                 this.setExportProgress(completed, totalImages, `Rendering page ${pageIndex + 1}/${this.layout.length}…`);
 
                 for (const img of page.images) {
@@ -2957,6 +3053,7 @@ class SheetBuilder {
         const PX_PER_MM = DPI / 25.4;
         const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
         const { enabled: bleedEnabled } = this.getBleedSettingsMm();
+        const getPageHeightPNG = (page) => page.computedPaperHeight ?? paperHeight;
 
         const totalImages = this.layout.reduce((sum, page) => sum + (page.images?.length || 0), 0);
         let completed = 0;
@@ -2979,7 +3076,7 @@ class SheetBuilder {
 
                 const canvas = document.createElement('canvas');
                 canvas.width = Math.round(paperWidth * PX_PER_MM);
-                canvas.height = Math.round(paperHeight * PX_PER_MM);
+                canvas.height = Math.round(getPageHeightPNG(page) * PX_PER_MM);
                 const ctx = canvas.getContext('2d');
 
                 for (const img of page.images) {

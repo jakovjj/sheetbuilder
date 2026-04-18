@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SheetBuilder - Gang Sheet Builder</title>
+    <meta name="description" content="Build DTF gang sheets and print-and-play layouts in your browser. Upload images, configure sizes, auto-pack, and export to high-res PDF or PNG.">
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="author" content="Glare Studios">
+
+    <link rel="canonical" href="https://sheetbuilder.net/builder.html">
+
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="shortcut icon" href="favicon.ico">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMKM4C2Q8J"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WMKM4C2Q8J');
+    </script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="title-section">
+                    <div class="title-row">
+                        <a href="index.html" class="header-home-link" title="Back to home">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </a>
+                        <img src="logo.png" alt="SheetBuilder" class="header-brand-image" onerror="this.style.display='none'">
+                    </div>
+                </div>
+
+                <div class="header-controls" aria-label="Units">
+                    <label class="header-control-label" for="unitSelect">Units:</label>
+                    <select id="unitSelect" class="header-control-select">
+                        <option value="mm">mm</option>
+                        <option value="in">inches</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            <section id="images" class="images-section">
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-images"></i></span>Images</h2>
+
+                <div id="upload" class="images-upload">
+                    <div class="file-upload images-window" id="imagesWindow" aria-label="Upload and configure images">
+                        <input type="file" id="imageInput" multiple accept="image/*">
+
+                        <div class="images-empty" id="imagesEmpty">
+                            <label for="imageInput" class="upload-btn">
+                                <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
+                                Choose Images
+                            </label>
+                            <div class="upload-info">
+                                <p>Drag & drop images here, click to browse, or paste from clipboard</p>
+                                <p class="upload-formats">Supports: JPG, PNG, GIF, WEBP</p>
+                            </div>
+                        </div>
+
+                        <div id="imagesList" class="images-list" aria-label="Images"></div>
+                        <div id="boxSelect" class="box-select" hidden aria-hidden="true"></div>
+
+                        <div class="images-window-footer" id="imagesWindowFooter">
+                            <div class="footer-actions-row">
+                                <label for="imageInput" class="footer-action-btn" aria-label="Add more images">
+                                    <i class="fa-solid fa-paperclip"></i> Add Images
+                                </label>
+                                <button type="button" id="footerSelectAll" class="footer-action-btn">
+                                    <i class="fa-solid fa-object-group"></i> Select All
+                                </button>
+                                <button type="button" id="footerDeleteAll" class="footer-action-btn">
+                                    <i class="fa-solid fa-trash"></i> Delete All
+                                </button>
+                            </div>
+                            <div id="uploadStatus" class="upload-status" hidden aria-live="polite"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <details class="upload-tutorial">
+                    <summary>How it works?</summary>
+                    <p>Upload as many images as you want. Each image shows a width and height field you can edit freely. Changing either dimension will automatically adjust the other to keep the original aspect ratio. You can also select multiple images at once, then edit any field to update all selected images at the same time.</p>
+                </details>
+            </section>
+
+            <section id="settings" class="settings-section">
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-gear"></i></span>Print Settings</h2>
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label for="paperSize">Paper Size:</label>
+                        <select id="paperSize">
+                            <option value="custom">Custom</option>
+                            <option value="a4" selected data-w-mm="210" data-h-mm="297" data-label="A4">A4</option>
+                            <option value="a3" data-w-mm="297" data-h-mm="420" data-label="A3">A3</option>
+                            <option value="a5" data-w-mm="148" data-h-mm="210" data-label="A5">A5</option>
+                            <option value="letter" data-w-mm="216" data-h-mm="279" data-label="Letter">Letter</option>
+                            <option value="legal" data-w-mm="216" data-h-mm="356" data-label="Legal">Legal</option>
+                            <option value="tabloid" data-w-mm="279" data-h-mm="432" data-label="Tabloid">Tabloid</option>
+                            <option value="photo4x6" data-w-mm="102" data-h-mm="152" data-label="Photo 4×6">Photo 4×6</option>
+                            <option value="photo5x7" data-w-mm="127" data-h-mm="178" data-label="Photo 5×7">Photo 5×7</option>
+                            <option value="photo8x10" data-w-mm="203" data-h-mm="254" data-label="Photo 8×10">Photo 8×10</option>
+                        </select>
+                    </div>
+                    <div class="setting-group">
+                        <label for="paperWidth">Paper Width (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="paperWidth" value="210" min="1" data-min-mm="1" data-step-mm="1">
+                    </div>
+                    <div class="setting-group">
+                        <label for="paperHeight">Paper Height (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="paperHeight" value="297" min="1" data-min-mm="1" data-step-mm="1">
+                        <div class="checkbox-group" style="margin-top:4px">
+                            <input type="checkbox" id="infiniteHeight">
+                            <label for="infiniteHeight" class="checkbox-label">Auto height</label>
+                        </div>
+                    </div>
+                    <div class="setting-group">
+                        <label for="outerMargin">Outer Margin (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="outerMargin" value="10" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1">
+                    </div>
+                    <div class="setting-group">
+                        <label for="innerMargin">Image Spacing (<span class="unit-label" data-unit-label>mm</span>):</label>
+                        <input type="number" id="innerMargin" value="5" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1">
+                        <small>Space between images</small>
+                    </div>
+                    <div class="setting-group">
+                        <label for="rotateImages">Allow Rotation:</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="rotateImages" checked>
+                            <label for="rotateImages" class="checkbox-label">Rotate images for better fit</label>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="separateByImageSize">Separate by Image Size:</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="separateByImageSize">
+                            <label for="separateByImageSize" class="checkbox-label">Start a new page when image dimensions change</label>
+                        </div>
+                        <small>Keeps different sizes on separate sheets.</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="pdfCompression">PDF Image Compression:</label>
+                        <select id="pdfCompression">
+                            <option value="perfect" selected>Perfect quality</option>
+                            <option value="high">High quality</option>
+                            <option value="medium">Medium quality</option>
+                            <option value="low">Low quality</option>
+                        </select>
+                        <small>Higher quality results in larger PDFs.</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="pngResolution">PNG Export Resolution:</label>
+                        <select id="pngResolution">
+                            <option value="72">72 DPI (screen)</option>
+                            <option value="150">150 DPI (standard)</option>
+                            <option value="300" selected>300 DPI (print quality)</option>
+                            <option value="600">600 DPI (high quality)</option>
+                            <option value="1200">1200 DPI (ultra quality)</option>
+                        </select>
+                        <small>Used when exporting to PNG. Higher = larger file.</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="fillUntilPagesEnabled">Fill Until Pages:</label>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="fillUntilPagesEnabled">
+                            <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*" style="width:72px">
+                        </div>
+                        <small>During export, repeats the layout until this page count is reached.</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="bleedLinesEnabled">Bleed Settings:</label>
+                        <div class="bleed-setting-row">
+                            <div class="checkbox-group bleed-setting-toggle">
+                                <input type="checkbox" id="bleedLinesEnabled" aria-label="Enable bleed">
+                            </div>
+                            <div class="bleed-setting-input">
+                                <label for="bleedMargin" class="visually-hidden">Bleed margin</label>
+                                <input type="number" id="bleedMargin" value="0" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1" aria-label="Bleed margin">
+                                <span class="bleed-setting-suffix"><span class="unit-label" data-unit-label>mm</span></span>
+                            </div>
+                        </div>
+                        <small>Reserves extra space and draws a dashed border.</small>
+                    </div>
+                </div>
+            </section>
+
+            <section id="actions" class="actions-section">
+                <button id="generateLayout" class="action-btn primary">
+                    <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-bullseye"></i></span>
+                    Generate Layout
+                </button>
+            </section>
+
+            <!-- Loading Overlay -->
+            <div id="loadingOverlay" class="loading-overlay hidden">
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <h3>Generating Layout...</h3>
+                    <p>Optimizing image placement for maximum efficiency</p>
+                </div>
+            </div>
+
+            <!-- Export Overlay -->
+            <div id="exportOverlay" class="loading-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+                <div class="loading-content export-content">
+                    <div class="loading-spinner"></div>
+                    <h3 id="exportTitle">Exporting to PDF...</h3>
+                    <p id="exportStatus">Starting…</p>
+                    <div class="export-progress" aria-hidden="true">
+                        <div id="exportProgressBar" class="export-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div id="exportProgressText" class="export-progress-text">0%</div>
+                    <button id="cancelExport" class="action-btn secondary" type="button">Cancel</button>
+                </div>
+            </div>
+
+            <section id="preview" class="preview-section hidden">
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-eye"></i></span>Layout Preview</h2>
+                <div id="layoutPreview" class="layout-preview"></div>
+                <div id="layoutStats" class="layout-stats"></div>
+
+                <div class="preview-export-btns">
+                    <button id="exportPDFBottom" class="action-btn secondary" disabled>
+                        <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
+                        Export to PDF
+                    </button>
+                    <button id="exportPNGBottom" class="action-btn secondary" disabled>
+                        <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
+                        Export to PNG
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <p>&copy; 2025 Glare Studios. All rights reserved.</p>
+                    <p class="footer-support">Support, feature requests &amp; <span class="footer-enterprise">enterprise licensing</span>: <a href="mailto:jakov@jandric.com">jakov@jandric.com</a></p>
+                </div>
+                <div class="footer-actions">
+                    <form action="https://paypal.me/itsjakovj" method="post" target="_top">
+                        <input type="hidden" name="business" value="jakov@jandric.com" />
+                        <input type="hidden" name="currency_code" value="USD" />
+                        <input type="hidden" name="item_name" value="Buy me a coffee" />
+                        <button type="submit" class="paypal-btn" title="Buy me a coffee">
+                            <span class="section-icon" aria-hidden="true"><i class="fa-solid fa-mug-hot"></i></span>Buy me a coffee
+                        </button>
+                    </form>
+
+                    <a class="github-btn" href="https://github.com/jakovjj/sheetbuilder" target="_blank" rel="noopener noreferrer" title="View on GitHub">
+                        <img class="github-logo" src="https://github.githubassets.com/favicons/favicon.svg" alt="GitHub" width="18" height="18" loading="lazy" referrerpolicy="no-referrer">
+                        <span>GitHub</span>
+                    </a>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Info/Conflict Modal -->
+    <div id="infoModal" class="info-modal hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+        <div class="info-modal-backdrop"></div>
+        <div class="info-modal-content">
+            <p id="infoModalMessage"></p>
+            <button id="infoModalOk" class="action-btn primary" type="button">OK</button>
+        </div>
+    </div>
+
+    <!-- Image Modal/Lightbox -->
+    <div id="imageModal" class="image-modal hidden">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+            <button class="modal-close" title="Close (ESC)">&times;</button>
+            <img id="modalImage" class="modal-image" src="" alt="Full size image">
+            <div class="modal-info">
+                <span id="modalImageName" class="image-name"></span>
+                <span id="modalImageSize" class="image-size"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheetBuilder - Smart DTF Gang Sheet Builder | Free Online Tool</title>
-    <meta name="description" content="Automatically pack DTF designs onto gang sheets with zero wasted space. Smart bin-packing algorithm fits more transfers per sheet. Free, runs in your browser, exports to high-res PDF or PNG.">
+    <title>SheetBuilder - Free DTF Gang Sheet Maker &amp; Smart Layout Builder</title>
+    <meta name="description" content="Free DTF gang sheet maker: automatically pack designs onto any sheet or roll with zero wasted film. Smart auto-layout algorithm, no signup, runs 100% in your browser. Export to high-res PDF or PNG up to 1200 DPI.">
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
     <meta name="theme-color" content="#ffffff">
-    <meta name="keywords" content="DTF gang sheet builder, gang sheet generator, DTF layout tool, direct to film gang sheet, free gang sheet software, DTF printing tool, gang sheet PDF export, image layout for printing, DTF transfer sheet, bulk DTF printing">
+    <meta name="keywords" content="DTF gang sheet maker, free DTF gang sheet maker, gang sheet builder, gang sheet generator, DTF layout tool, direct to film gang sheet, free gang sheet software, DTF printing tool, gang sheet PDF export, DTF transfer sheet, bulk DTF printing, smart DTF layout, auto pack DTF designs, DTF gang sheet creator, DTF roll printing, free gang sheet creator, online gang sheet maker, DTF film layout, print and play layout tool, PnP sheet builder, print and play sheet maker, PnP card layout, board game print and play, PnP game printing, tabletop PnP layout, print and play PDF">
     <meta name="author" content="Glare Studios">
 
-    <!-- Canonical (replace with your production URL) -->
     <link rel="canonical" href="https://sheetbuilder.net/">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="SheetBuilder - Smart DTF Gang Sheet Builder">
-    <meta property="og:description" content="Build DTF gang sheets in seconds, free, no signup. Auto-pack images onto any sheet size and export to high-res PDF or PNG.">
+    <meta property="og:title" content="SheetBuilder - Free DTF Gang Sheet Maker &amp; Smart Layout Builder">
+    <meta property="og:description" content="Free DTF gang sheet maker: auto-pack designs onto any sheet or roll with zero wasted film. No signup, runs in your browser. Export to high-res PDF or PNG up to 1200 DPI.">
     <meta property="og:url" content="https://sheetbuilder.net/">
     <meta property="og:image" content="https://sheetbuilder.net/logo.png">
     <meta property="og:site_name" content="SheetBuilder">
@@ -24,10 +23,10 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="SheetBuilder - Smart DTF Gang Sheet Builder">
-    <meta name="twitter:description" content="Build DTF gang sheets in seconds, free, no signup. Auto-pack images onto any sheet size and export to high-res PDF or PNG.">
+    <meta name="twitter:title" content="SheetBuilder - Free DTF Gang Sheet Maker &amp; Smart Layout Builder">
+    <meta name="twitter:description" content="Free DTF gang sheet maker: auto-pack designs onto any sheet or roll with zero wasted film. No signup, runs in your browser. Export to high-res PDF or PNG up to 1200 DPI.">
     <meta name="twitter:image" content="https://sheetbuilder.net/logo.png">
-    <!-- Resource hints for CDN performance -->
+
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://www.googletagmanager.com">
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
@@ -42,8 +41,6 @@
     <link rel="manifest" href="site.webmanifest">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <!-- Structured data -->
     <script type="application/ld+json">
@@ -51,13 +48,14 @@
             "@context": "https://schema.org",
             "@type": "WebApplication",
             "name": "SheetBuilder",
-            "url": "https://sheetbuilder.net/",
+            "url": "https://sheetbuilder.net/builder.html",
             "applicationCategory": "DesignApplication",
             "operatingSystem": "Web",
             "browserRequirements": "Requires a modern web browser with JavaScript enabled",
-            "description": "Free online DTF gang sheet builder. Upload images, set sizes and copy counts, auto-pack them onto any sheet or roll size, then export to high-resolution PDF or PNG. No account needed.",
+            "description": "Free online DTF gang sheet builder and print-and-play layout tool. Upload images, set sizes and copy counts, auto-pack them onto any sheet or roll size, then export to high-resolution PDF or PNG. No account needed.",
             "featureList": [
                 "DTF gang sheet layout generation",
+                "Print-and-play card and tile layout",
                 "Automatic image bin-packing with rotation support",
                 "Custom paper and roll sizes",
                 "Bleed lines and outer margin controls",
@@ -120,17 +118,16 @@
                 },
                 {
                     "@type": "Question",
-                    "name": "What image formats are supported?",
+                    "name": "Can I use SheetBuilder for print-and-play games?",
                     "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "SheetBuilder supports JPG, PNG, GIF, and WEBP images. PNG with transparency is ideal for DTF transfers."
+                        "text": "Yes. SheetBuilder is a popular free print-and-play layout tool. Upload your card or tile art as PNG files, set standard card dimensions, configure copy counts, and generate a packed sheet ready to print on A4 or Letter paper."
                     }
                 }
             ]
         }
     </script>
 
-    <!-- GA4 (optional): replace G-XXXXXXXXXX with your Measurement ID -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-WMKM4C2Q8J"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
@@ -142,233 +139,154 @@
 <body>
     <header class="site-header">
         <div class="container">
-            <div class="header-content">
-                <div class="title-section">
-                    <div class="title-row">
-                        <img src="logo.png" alt="SheetBuilder" class="header-brand-image" onerror="this.style.display='none'">
-                    </div>
-                </div>
-
-                <div class="header-controls" aria-label="Units">
-                    <label class="header-control-label" for="unitSelect">Units:</label>
-                    <select id="unitSelect" class="header-control-select">
-                        <option value="mm">mm</option>
-                        <option value="in">inches</option>
-                    </select>
-                </div>
+            <div class="header-content header-content--home">
+                <img src="logo.png" alt="SheetBuilder" class="header-brand-image" onerror="this.style.display='none'">
+                <a href="builder.html" class="header-launch-btn">
+                    <i class="fa-solid fa-bullseye"></i> Open Builder
+                </a>
             </div>
         </div>
     </header>
 
     <div class="container">
         <main>
-            <section id="howto" class="intro-section">
-                <h1 class="site-tagline">Smart DTF Gang Sheet Builder - Free Online Tool</h1>
-                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-circle-info"></i></span>How to use SheetBuilder</h2>
-                <div class="howto-content">
-                    <p class="howto-paragraph">Upload your images, set each image size (<span class="unit-label" data-unit-label>mm</span>) and copies, then choose your paper size and margins. When you’re ready, click Generate Layout and then Export to PDF. Feel free to contact jakov@jandric.com for support or feature requests.</p>
-                    <p class="howto-paragraph">SheetBuilder automatically packs your DTF designs onto a single gang sheet using an efficient bin-packing algorithm, with no wasted film and no manual layout. Works with any sheet width or roll size. Export to high-resolution PDF or PNG (up to 1200 DPI) ready for your DTF printer. <strong>Free, open source, no signup required.</strong> Your images never leave your browser.</p>
+            <section class="hero-section">
+                <h1 class="hero-title">Free DTF Gang Sheet Maker &amp; Smart Layout Builder</h1>
+                <p class="hero-desc">Upload your designs, set sizes and copy counts, and SheetBuilder <strong>automatically packs everything onto a print-ready gang sheet</strong> with zero wasted film. <strong>No account, no uploads, no cost.</strong> Works for DTF transfers, PnP card games, and any sheet-based print job.</p>
+                <div class="hero-cta-row">
+                    <a href="builder.html" class="cta-btn">
+                        <i class="fa-solid fa-bullseye"></i> Build a Sheet
+                    </a>
                 </div>
+                <ul class="hero-pills">
+                    <li><i class="fa-solid fa-check"></i> Free forever</li>
+                    <li><i class="fa-solid fa-check"></i> Open-source</li>
+                    <li><i class="fa-solid fa-check"></i> No account required</li>
+                    <li><i class="fa-solid fa-check"></i> Runs entirely in your browser</li>
+                    <li><i class="fa-solid fa-check"></i> Export to PDF or PNG up to 1200 DPI</li>
+                </ul>
             </section>
 
-            <section id="images" class="images-section">
-                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-images"></i></span>Images</h2>
-
-                <div id="upload" class="images-upload">
-                    <div class="file-upload images-window" id="imagesWindow" aria-label="Upload and configure images">
-                        <input type="file" id="imageInput" multiple accept="image/*">
-
-                        <div class="images-empty" id="imagesEmpty">
-                            <label for="imageInput" class="upload-btn">
-                                <span class="upload-icon" aria-hidden="true"><i class="fa-solid fa-paperclip"></i></span>
-                                Choose Images
-                            </label>
-                            <div class="upload-info">
-                                <p>Drag & drop images here, click to browse, or paste from clipboard</p>
-                                <p class="upload-formats">Supports: JPG, PNG, GIF, WEBP</p>
-                            </div>
+            <section id="features" class="features-section">
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon" aria-hidden="true"><i class="fa-solid fa-puzzle-piece"></i></span>
+                            <h3>Smart Auto-Packing Layout</h3>
                         </div>
-
-                        <div id="imagesList" class="images-list" aria-label="Images"></div>
-                        <div id="boxSelect" class="box-select" hidden aria-hidden="true"></div>
-
-                        <div class="images-window-footer" id="imagesWindowFooter">
-                            <div class="footer-actions-row">
-                                <label for="imageInput" class="footer-action-btn" aria-label="Add more images">
-                                    <i class="fa-solid fa-paperclip"></i> Add Images
-                                </label>
-                                <button type="button" id="footerSelectAll" class="footer-action-btn">
-                                    <i class="fa-solid fa-object-group"></i> Select All
-                                </button>
-                                <button type="button" id="footerDeleteAll" class="footer-action-btn">
-                                    <i class="fa-solid fa-trash"></i> Delete All
-                                </button>
-                            </div>
-                            <div id="uploadStatus" class="upload-status" hidden aria-live="polite"></div>
+                        <p>Our bin-packing algorithm <strong>automatically arranges all your DTF designs</strong> onto the sheet for maximum coverage. It optionally rotates images to squeeze more transfers per sheet, just like professional gang sheet layout software, but completely free.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon" aria-hidden="true"><i class="fa-solid fa-scroll"></i></span>
+                            <h3>Custom Sheet &amp; Roll Sizes</h3>
                         </div>
+                        <p>Set <strong>any paper width and height</strong> to match your DTF printer's roll or sheet. Whether you print on 13", 22", or 24" wide DTF film, SheetBuilder handles it. The Fill Until Pages option repeats layouts automatically for long roll-to-roll printing jobs.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon" aria-hidden="true"><i class="fa-solid fa-file-export"></i></span>
+                            <h3>High-Res PDF &amp; PNG Export</h3>
+                        </div>
+                        <p>Export your gang sheet as a pixel-perfect PDF or a <strong>PNG at up to 1200 DPI</strong>. Perfect quality PDF mode produces lossless output ideal for professional DTF printing services. High DPI PNG export works great for RIP software and direct printer import.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon" aria-hidden="true"><i class="fa-solid fa-lock"></i></span>
+                            <h3>100% Private &amp; Browser-Based</h3>
+                        </div>
+                        <p>SheetBuilder runs entirely in your browser. <strong>Your artwork never touches our servers.</strong> No uploads, no accounts, no watermarks. Your custom designs stay yours, making it the safest free DTF gang sheet creator for proprietary artwork.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon" aria-hidden="true"><i class="fa-solid fa-layer-group"></i></span>
+                            <h3>Separate Sheets by Image Size</h3>
+                        </div>
+                        <p>Automatically group different transfer sizes onto <strong>separate pages</strong>. When a DTF job mixes shirt-sized prints with small pocket prints, SheetBuilder keeps them organized on distinct sheets so your press operator can work efficiently.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-card-header">
+                            <span class="feature-icon" aria-hidden="true"><i class="fa-solid fa-expand"></i></span>
+                            <h3>Bleed Lines &amp; Margin Controls</h3>
+                        </div>
+                        <p>Add configurable <strong>outer margins, inter-image spacing, and bleed lines</strong> to every gang sheet. Bleed settings draw a dashed border around each design to assist cutting, essential for production-ready DTF transfer layouts and gang sheet orders.</p>
+                    </div>
+                </div>            </section>
+
+            <section id="pnp" class="pnp-section">
+                <details class="features-details">
+                <summary><h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-dice"></i></span>SheetBuilder for Print-and-Play (PnP) Games</h2></summary>
+                <p class="features-intro">SheetBuilder is widely used by the tabletop and board game community as a free print-and-play layout tool. Whether you're playtesting a prototype or printing a final PnP release, the auto-packing engine handles all the tedious layout work for you.</p>
+                <div class="pnp-content">
+                    <div class="pnp-body">
+                        <p>Print-and-play designers and players need to fit as many cards, tiles, and tokens as possible onto a single sheet to minimize paper and ink usage. SheetBuilder's smart bin-packing algorithm does exactly that: upload your card faces as PNG images, set each one to standard card dimensions (e.g., 63 x 88 mm for poker-size cards or 44 x 67 mm for mini cards), enter how many copies you need, and hit Generate Layout. The tool arranges everything automatically with configurable spacing between cards so they're easy to cut.</p>
+                        <p>You can mix card sizes on the same sheet, separate different component types onto distinct pages using the Separate by Image Size option, and export the finished layout as a print-ready PDF or high-resolution PNG. Everything runs in your browser with no file uploads, which is important when working with unreleased or proprietary PnP game art.</p>
+                    </div>
+                    <div class="pnp-usecases">
+                        <h3>Common PnP use cases</h3>
+                        <ul class="pnp-list">
+                            <li><strong>Card games:</strong> Pack poker-size, tarot-size, or mini cards onto A4, Letter, or custom sheet sizes for home printing.</li>
+                            <li><strong>Tile-based games:</strong> Arrange square or rectangular tiles at any scale, with equal spacing for clean guillotine cuts.</li>
+                            <li><strong>Prototype testing:</strong> Quickly iterate on new card designs by uploading updated PNGs and regenerating the layout in seconds.</li>
+                            <li><strong>Token sheets:</strong> Fit dozens of small circular or square tokens onto a single page using rotation to maximize coverage.</li>
+                            <li><strong>Mixed components:</strong> Combine cards, tiles, and reference sheets on separate pages in one export run using the page-separation feature.</li>
+                            <li><strong>Publisher print files:</strong> Generate production-ready PDFs at 300 DPI or higher for sending to a professional print shop or POD service.</li>
+                        </ul>
                     </div>
                 </div>
-
-                <details class="upload-tutorial">
-                    <summary>How it works?</summary>
-                    <p>Upload as many images as you want. Each image shows a width and height field you can edit freely. Changing either dimension will automatically adjust the other to keep the original aspect ratio. You can also select multiple images at once, then edit any field to update all selected images at the same time.</p>
                 </details>
             </section>
 
-            <section id="settings" class="settings-section">
-                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-gear"></i></span>Print Settings</h2>
-                <div class="settings-grid">
-                    <div class="setting-group">
-                        <label for="paperSize">Paper Size:</label>
-                        <select id="paperSize">
-                            <option value="custom">Custom</option>
-                            <option value="a4" selected data-w-mm="210" data-h-mm="297" data-label="A4">A4</option>
-                            <option value="a3" data-w-mm="297" data-h-mm="420" data-label="A3">A3</option>
-                            <option value="a5" data-w-mm="148" data-h-mm="210" data-label="A5">A5</option>
-                            <option value="letter" data-w-mm="216" data-h-mm="279" data-label="Letter">Letter</option>
-                            <option value="legal" data-w-mm="216" data-h-mm="356" data-label="Legal">Legal</option>
-                            <option value="tabloid" data-w-mm="279" data-h-mm="432" data-label="Tabloid">Tabloid</option>
-                            <option value="photo4x6" data-w-mm="102" data-h-mm="152" data-label="Photo 4×6">Photo 4×6</option>
-                            <option value="photo5x7" data-w-mm="127" data-h-mm="178" data-label="Photo 5×7">Photo 5×7</option>
-                            <option value="photo8x10" data-w-mm="203" data-h-mm="254" data-label="Photo 8×10">Photo 8×10</option>
-                        </select>
+            <section id="faq" class="faq-section">
+                <details class="features-details">
+                <summary><h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-circle-question"></i></span>Frequently Asked Questions</h2></summary>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <h3>What is a DTF gang sheet?</h3>
+                        <p>A DTF (Direct-to-Film) gang sheet is a single sheet or roll of transfer film that holds multiple designs packed together as efficiently as possible. Printing multiple transfers at once reduces film waste and lowers the cost per transfer. Gang sheets are standard practice for DTF print shops, custom apparel decorators, and heat-transfer resellers.</p>
                     </div>
-                    <div class="setting-group">
-                        <label for="paperWidth">Paper Width (<span class="unit-label" data-unit-label>mm</span>):</label>
-                        <input type="number" id="paperWidth" value="210" min="1" data-min-mm="1" data-step-mm="1">
+                    <div class="faq-item">
+                        <h3>Is SheetBuilder free to use?</h3>
+                        <p>Yes. SheetBuilder is completely free, with no account, no subscription, and no watermark. It's also open source. You can use it as many times as you like to build gang sheets for personal or commercial DTF printing work. There's no hidden cost or trial limit.</p>
                     </div>
-                    <div class="setting-group">
-                        <label for="paperHeight">Paper Height (<span class="unit-label" data-unit-label>mm</span>):</label>
-                        <input type="number" id="paperHeight" value="297" min="1" data-min-mm="1" data-step-mm="1">
+                    <div class="faq-item">
+                        <h3>How is SheetBuilder different from other free DTF gang sheet makers?</h3>
+                        <p>Most free gang sheet builders either upload your files to a server, add watermarks, or limit how many designs you can use. SheetBuilder runs entirely in your browser, so nothing is uploaded anywhere. There are no limits on designs, copies, or exports. The smart bin-packing algorithm with rotation support is the same approach used by professional layout software.</p>
                     </div>
-                    <div class="setting-group">
-                        <label for="outerMargin">Outer Margin (<span class="unit-label" data-unit-label>mm</span>):</label>
-                        <input type="number" id="outerMargin" value="10" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1">
+                    <div class="faq-item">
+                        <h3>Does SheetBuilder upload my images to a server?</h3>
+                        <p>No. SheetBuilder processes everything locally in your browser. Your images, artwork, and designs never leave your device: no server uploads, no cloud storage, no privacy risk. This makes it ideal for printing shops that work with proprietary or licensed artwork.</p>
                     </div>
-                    <div class="setting-group">
-                        <label for="innerMargin">Image Spacing (<span class="unit-label" data-unit-label>mm</span>):</label>
-                        <input type="number" id="innerMargin" value="5" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1">
-                        <small>Space between images</small>
+                    <div class="faq-item">
+                        <h3>What file formats are supported for import and export?</h3>
+                        <p>SheetBuilder accepts JPG, PNG, GIF, and WEBP image files. PNG with transparency is the best format for DTF transfers. For export, you can save your gang sheet as a high-resolution PDF (perfect, high, medium, or low compression) or as a PNG at 72, 150, 300, 600, or 1200 DPI. Most DTF RIP software and online print shops accept both formats.</p>
                     </div>
-                    <div class="setting-group">
-                        <label for="rotateImages">Allow Rotation:</label>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="rotateImages" checked>
-                            <label for="rotateImages" class="checkbox-label">Rotate images for better fit</label>
-                        </div>
+                    <div class="faq-item">
+                        <h3>Can I use SheetBuilder for DTF roll printing?</h3>
+                        <p>Yes. Set a custom paper width to match your roll (e.g., 600 mm for a 24" roll) and leave the height open-ended. Use the Fill Until Pages option to repeat the layout automatically until a target page count is reached, ideal for producing long roll-length DTF gang sheets with minimal waste.</p>
                     </div>
-
-                    <div class="setting-group">
-                        <label for="separateByImageSize">Separate by Image Size:</label>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="separateByImageSize">
-                            <label for="separateByImageSize" class="checkbox-label">Start a new page when image dimensions change</label>
-                        </div>
-                        <small>Keeps different sizes on separate sheets.</small>
+                    <div class="faq-item">
+                        <h3>What is the smart layout algorithm?</h3>
+                        <p>SheetBuilder uses a rectangle bin-packing algorithm that places each design in the optimal position on the sheet. It tries both original and rotated orientations for every image to find the arrangement with the least wasted space. This is the same principle behind professional gang sheet generators used by large-format DTF printers and print-and-play layout tools.</p>
                     </div>
-
-                    <div class="setting-group">
-                        <label for="pdfCompression">PDF Image Compression:</label>
-                        <select id="pdfCompression">
-                            <option value="perfect" selected>Perfect quality</option>
-                            <option value="high">High quality</option>
-                            <option value="medium">Medium quality</option>
-                            <option value="low">Low quality</option>
-                        </select>
-                        <small>Higher quality results in larger PDFs.</small>
+                    <div class="faq-item">
+                        <h3>Can I set different sizes and copy counts for each design?</h3>
+                        <p>Yes. Each image can have its own width, height (locked to aspect ratio), and copy count. You can also select multiple images at once and bulk-edit their size. This makes it easy to build gang sheets that mix large chest prints, small pocket logos, and sleeve designs, or PnP sheets that mix different card sizes all in one session.</p>
                     </div>
-
-                    <div class="setting-group">
-                        <label for="pngResolution">PNG Export Resolution:</label>
-                        <select id="pngResolution">
-                            <option value="72">72 DPI (screen)</option>
-                            <option value="150">150 DPI (standard)</option>
-                            <option value="300" selected>300 DPI (print quality)</option>
-                            <option value="600">600 DPI (high quality)</option>
-                            <option value="1200">1200 DPI (ultra quality)</option>
-                        </select>
-                        <small>Used when exporting to PNG. Higher = larger file.</small>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="fillUntilPagesEnabled">Fill Until Pages:</label>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="fillUntilPagesEnabled">
-                            <input type="number" id="fillUntilPages" min="1" value="1" inputmode="numeric" pattern="[0-9]*" style="width:72px">
-                        </div>
-                        <small>During export, repeats the layout until this page count is reached.</small>
-                    </div>
-
-                    <div class="setting-group">
-                        <label for="bleedLinesEnabled">Bleed Settings:</label>
-                        <div class="bleed-setting-row">
-                            <div class="checkbox-group bleed-setting-toggle">
-                                <input type="checkbox" id="bleedLinesEnabled" aria-label="Enable bleed">
-                            </div>
-                            <div class="bleed-setting-input">
-                                <label for="bleedMargin" class="visually-hidden">Bleed margin</label>
-                                <input type="number" id="bleedMargin" value="0" min="0" step="0.1" data-min-mm="0" data-step-mm="0.1" aria-label="Bleed margin">
-                                <span class="bleed-setting-suffix"><span class="unit-label" data-unit-label>mm</span></span>
-                            </div>
-                        </div>
-                        <small>Reserves extra space and draws a dashed border.</small>
+                    <div class="faq-item">
+                        <h3>Can I use SheetBuilder for print-and-play card games?</h3>
+                        <p>Yes. SheetBuilder is a popular free print-and-play layout tool for tabletop game designers and players. Upload your card art as PNG files, set standard card dimensions (poker size is 63 x 88 mm, mini cards are 44 x 67 mm), set your copy count, and generate a packed layout ready to print on A4 or Letter paper. The bleed and spacing controls make it easy to produce clean, cuttable PnP sheets.</p>
                     </div>
                 </div>
-            </section>
-
-            <section id="actions" class="actions-section">
-                <button id="generateLayout" class="action-btn primary">
-                    <span class="btn-icon" aria-hidden="true"><i class="fa-solid fa-bullseye"></i></span>
-                    Generate Layout
-                </button>
-            </section>
-
-            <!-- Loading Overlay -->
-            <div id="loadingOverlay" class="loading-overlay hidden">
-                <div class="loading-content">
-                    <div class="loading-spinner"></div>
-                    <h3>Generating Layout...</h3>
-                    <p>Optimizing image placement for maximum efficiency</p>
-                </div>
-            </div>
-
-            <!-- Export Overlay -->
-            <div id="exportOverlay" class="loading-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
-                <div class="loading-content export-content">
-                    <div class="loading-spinner"></div>
-                    <h3 id="exportTitle">Exporting to PDF...</h3>
-                    <p id="exportStatus">Starting…</p>
-                    <div class="export-progress" aria-hidden="true">
-                        <div id="exportProgressBar" class="export-progress-bar" style="width: 0%"></div>
-                    </div>
-                    <div id="exportProgressText" class="export-progress-text">0%</div>
-                    <button id="cancelExport" class="action-btn secondary" type="button">Cancel</button>
-                </div>
-            </div>
-
-            <section id="preview" class="preview-section hidden">
-                <h2><span class="section-icon" aria-hidden="true"><i class="fa-regular fa-eye"></i></span>Layout Preview</h2>
-                <div id="layoutPreview" class="layout-preview"></div>
-                <div id="layoutStats" class="layout-stats"></div>
-
-                <div class="preview-export-btns">
-                    <button id="exportPDFBottom" class="action-btn secondary" disabled>
-                        <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-pdf"></i></span>
-                        Export to PDF
-                    </button>
-                    <button id="exportPNGBottom" class="action-btn secondary" disabled>
-                        <span class="btn-icon" aria-hidden="true"><i class="fa-regular fa-file-image"></i></span>
-                        Export to PNG
-                    </button>
-                </div>
+                </details>
             </section>
         </main>
-        
+
         <footer class="footer">
             <div class="footer-content">
                 <div class="footer-info">
                     <p>&copy; 2025 Glare Studios. All rights reserved.</p>
-                    <p class="footer-support">Free support &amp; feature requests: <a href="mailto:jakov@jandric.com">jakov@jandric.com</a></p>
+                    <p class="footer-support">Support, feature requests &amp; <span class="footer-enterprise">enterprise licensing</span>: <a href="mailto:jakov@jandric.com">jakov@jandric.com</a></p>
                 </div>
                 <div class="footer-actions">
                     <form action="https://paypal.me/itsjakovj" method="post" target="_top">
@@ -388,20 +306,5 @@
             </div>
         </footer>
     </div>
-
-    <!-- Image Modal/Lightbox -->
-    <div id="imageModal" class="image-modal hidden">
-        <div class="modal-backdrop"></div>
-        <div class="modal-content">
-            <button class="modal-close" title="Close (ESC)">&times;</button>
-            <img id="modalImage" class="modal-image" src="" alt="Full size image">
-            <div class="modal-info">
-                <span id="modalImageName" class="image-name"></span>
-                <span id="modalImageSize" class="image-size"></span>
-            </div>
-        </div>
-    </div>
-
-    <script src="script.js"></script>
 </body>
 </html>
