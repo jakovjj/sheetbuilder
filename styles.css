@@ -308,7 +308,14 @@ h2 {
     font-weight: 800;
     color: #111827;
     line-height: 1.25;
-    margin-bottom: 18px;
+    margin-bottom: 10px;
+}
+
+.hero-subtitle {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #b91c1c;
+    margin-bottom: 16px;
 }
 
 .hero-desc {
