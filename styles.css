@@ -1324,6 +1324,7 @@ h2 {
     background: #fff;
     color: #374151;
     -moz-appearance: textfield;
+    appearance: textfield;
 }
 
 .image-bar input:focus {
@@ -1945,8 +1946,6 @@ h2 {
     max-width: 480px;
 }
 
-#exportPDFBottom {
-}
 
 .stats-grid {
     display: grid;
@@ -2420,4 +2419,349 @@ header.site-header,
 /* Remove text shadows as well */
 .title-section h1 {
     text-shadow: none !important;
+}
+
+/* Cookie consent banner */
+.cookie-banner[hidden] { display: none !important; }
+
+.cookie-banner {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    background: #1e293b;
+    color: #f8fafc;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.875rem;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.25);
+}
+
+.cookie-banner-icon {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    color: #f59e0b;
+}
+
+.cookie-banner p {
+    flex: 1;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cookie-banner-btns {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.cookie-btn-accept,
+.cookie-btn-decline {
+    padding: 8px 18px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.cookie-btn-accept {
+    background: #dc2626;
+    color: white;
+}
+
+.cookie-btn-accept:hover {
+    background: #b91c1c;
+}
+
+.cookie-btn-decline {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #475569;
+}
+
+.cookie-btn-decline:hover {
+    background: #334155;
+    color: #f8fafc;
+}
+
+@media (max-width: 600px) {
+    .cookie-banner {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* ─── Pricing button (both pages) ─── */
+.header-pricing-btn {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.header-pricing-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+}
+
+/* ─── Home header nav group ─── */
+.header-home-nav {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* ─── Commercial notice (below export buttons) ─── */
+.commercial-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 18px;
+    padding: 10px 16px;
+    background: rgba(30, 41, 59, 0.04);
+    border: 1px solid rgba(100, 116, 139, 0.18);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    color: #64748b;
+    max-width: 520px;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.4;
+}
+
+.commercial-notice i {
+    flex-shrink: 0;
+    color: #94a3b8;
+    font-size: 0.9rem;
+}
+
+.commercial-notice strong {
+    color: #475569;
+}
+
+.commercial-notice-btn {
+    flex-shrink: 0;
+    display: inline-block;
+    background: #dc2626;
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 7px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.commercial-notice-btn:hover {
+    background: #b91c1c;
+}
+
+/* ─── Pricing section (landing page) ─── */
+.pricing-section {
+    margin-bottom: 24px;
+    padding: 28px 24px;
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.pricing-section h2 {
+    margin: 0 0 20px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ─── Pricing tiers (shared by section + modal) ─── */
+.pricing-tiers {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.pricing-tier {
+    flex: 1 1 220px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+}
+
+.pricing-tier--pro {
+    background: #fff5f5;
+    border-color: #fca5a5;
+}
+
+.pricing-tier-badge {
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.pricing-tier-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin-top: 6px;
+}
+
+.pricing-tier-price {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #dc2626;
+    line-height: 1;
+}
+
+.pricing-tier-price span {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-left: 2px;
+}
+
+.pricing-tier-features {
+    list-style: none;
+    padding: 0;
+    margin: 4px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.85rem;
+    color: #374151;
+    flex: 1;
+}
+
+.pricing-tier-features li {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.pricing-tier-features i {
+    color: #16a34a;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.pricing-tier-note {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin: 4px 0 0;
+}
+
+.pricing-cta-btn {
+    display: block;
+    text-align: center;
+    background: #dc2626;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 10px 16px;
+    border-radius: 9px;
+    text-decoration: none;
+    margin-top: 10px;
+    transition: background 0.15s;
+}
+
+.pricing-cta-btn:hover {
+    background: #b91c1c;
+}
+
+/* ─── Pricing modal ─── */
+.pricing-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.pricing-modal.hidden {
+    display: none;
+}
+
+.pricing-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+}
+
+.pricing-modal-content {
+    position: relative;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 28px 24px 24px;
+    max-width: 560px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.pricing-modal-content h3 {
+    margin: 0 0 20px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.pricing-modal-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: #94a3b8;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: color 0.12s, background 0.12s;
+}
+
+.pricing-modal-close:hover {
+    color: #1e293b;
+    background: #f1f5f9;
+}
+
+@media (max-width: 480px) {
+    .pricing-tiers {
+        flex-direction: column;
+    }
 }

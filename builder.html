@@ -21,6 +21,7 @@
     <link rel="manifest" href="site.webmanifest">
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.clarity.ms">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -30,6 +31,7 @@
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
+        gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied' });
         gtag('js', new Date());
         gtag('config', 'G-WMKM4C2Q8J');
     </script>
@@ -48,6 +50,7 @@
                 </div>
 
                 <div class="header-controls" aria-label="Units">
+                    <button type="button" class="header-pricing-btn" id="openPricingModal" title="View pricing">Pricing</button>
                     <label class="header-control-label" for="unitSelect">Units:</label>
                     <select id="unitSelect" class="header-control-select">
                         <option value="mm">mm</option>
@@ -254,6 +257,12 @@
                         Export to PNG
                     </button>
                 </div>
+
+                <div class="commercial-notice">
+                    <i class="fa-solid fa-briefcase" aria-hidden="true"></i>
+                    <span>Planning to use this output commercially? A <strong>one-time $29 lifetime commercial license</strong> keeps your business legally compliant.</span>
+                    <a href="https://buy.stripe.com/9B600j5Rb4jagK25Hjcwg0f" target="_blank" rel="noopener noreferrer" class="commercial-notice-btn">Get License →</a>
+                </div>
             </section>
         </main>
 
@@ -305,5 +314,68 @@
     </div>
 
     <script src="script.js"></script>
+
+    <!-- Pricing Modal -->
+    <div id="pricingModal" class="pricing-modal hidden" role="dialog" aria-modal="true" aria-labelledby="pricingModalTitle">
+        <div class="pricing-modal-backdrop" id="pricingModalBackdrop"></div>
+        <div class="pricing-modal-content">
+            <button class="pricing-modal-close" id="closePricingModal" aria-label="Close pricing">&times;</button>
+            <h3 id="pricingModalTitle">Pricing</h3>
+            <div class="pricing-tiers">
+                <div class="pricing-tier">
+                    <div class="pricing-tier-name">Personal</div>
+                    <div class="pricing-tier-price">Free</div>
+                    <ul class="pricing-tier-features">
+                        <li><i class="fa-solid fa-check"></i> Unlimited sheets</li>
+                        <li><i class="fa-solid fa-check"></i> All features included</li>
+                        <li><i class="fa-solid fa-check"></i> No account required</li>
+                        <li><i class="fa-solid fa-check"></i> Runs in your browser</li>
+                    </ul>
+                    <p class="pricing-tier-note">Free for personal &amp; non-commercial use</p>
+                </div>
+                <div class="pricing-tier pricing-tier--pro">
+                    <div class="pricing-tier-badge">For Businesses</div>
+                    <div class="pricing-tier-name">Commercial</div>
+                    <div class="pricing-tier-price">$29 <span>one-time</span></div>
+                    <ul class="pricing-tier-features">
+                        <li><i class="fa-solid fa-check"></i> Everything in Personal</li>
+                        <li><i class="fa-solid fa-check"></i> Lifetime license</li>
+                        <li><i class="fa-solid fa-check"></i> Use output commercially</li>
+                        <li><i class="fa-solid fa-check"></i> Legally compliant for business</li>
+                        <li><i class="fa-solid fa-check"></i> Email support</li>
+                    </ul>
+                    <a href="https://buy.stripe.com/9B600j5Rb4jagK25Hjcwg0f" target="_blank" rel="noopener noreferrer" class="pricing-cta-btn">Get Commercial License</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function() {
+            var modal = document.getElementById('pricingModal');
+            document.getElementById('openPricingModal').addEventListener('click', function() {
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            });
+            function closeModal() {
+                modal.classList.add('hidden');
+                document.body.style.overflow = '';
+            }
+            document.getElementById('closePricingModal').addEventListener('click', closeModal);
+            document.getElementById('pricingModalBackdrop').addEventListener('click', closeModal);
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+            });
+        })();
+    </script>
+
+    <div id="cookie-consent-banner" class="cookie-banner" hidden>
+        <i class="fa-solid fa-cookie-bite cookie-banner-icon" aria-hidden="true"></i>
+        <p>We use analytics cookies (Google Analytics &amp; Microsoft Clarity) to understand how SheetBuilder is used. Your images & files <strong>never leave your device</strong>, no uploads, no sharing, ever.</p>
+        <div class="cookie-banner-btns">
+            <button id="cookie-accept" type="button" class="cookie-btn-accept">Accept</button>
+            <button id="cookie-decline" type="button" class="cookie-btn-decline">Decline</button>
+        </div>
+    </div>
+    <script src="consent.js"></script>
 </body>
 </html>

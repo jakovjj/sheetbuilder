@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SheetBuilder - Free Auto-Pack Sheet Layout Builder | DTF, PnP &amp; More</title>
+    <title>SheetBuilder - Auto-Pack Sheet Layout Builder | DTF, PnP &amp; More</title>
     <meta name="description" content="Free sheet layout builder: automatically pack images onto any sheet or roll with zero wasted space. Used for DTF gang sheets, print-and-play cards, sticker sheets & more. No signup, runs 100% in your browser. Export to PDF or PNG up to 1200 DPI.">
     <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
     <meta name="theme-color" content="#ffffff">
@@ -14,7 +14,7 @@
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="SheetBuilder - Free Auto-Pack Sheet Layout Builder">
+    <meta property="og:title" content="SheetBuilder - Auto-Pack Sheet Layout Builder">
     <meta property="og:description" content="Auto-pack images onto any sheet or roll with zero wasted space. Used for DTF gang sheets, PnP cards, sticker sheets & more. No signup, runs in your browser.">
     <meta property="og:url" content="https://sheetbuilder.net/">
     <meta property="og:image" content="https://sheetbuilder.net/logo.png">
@@ -23,12 +23,13 @@
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="SheetBuilder - Free Auto-Pack Sheet Layout Builder">
+    <meta name="twitter:title" content="SheetBuilder - Auto-Pack Sheet Layout Builder">
     <meta name="twitter:description" content="Auto-pack images onto any sheet or roll with zero wasted space. Used for DTF gang sheets, PnP cards, sticker sheets & more. No signup, runs in your browser.">
     <meta name="twitter:image" content="https://sheetbuilder.net/logo.png">
 
     <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link rel="preconnect" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.clarity.ms">
     <link rel="dns-prefetch" href="https://fonts.gstatic.com">
 
     <link rel="icon" type="image/x-icon" href="favicon.ico">
@@ -132,6 +133,7 @@
     <script>
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
+        gtag('consent', 'default', { analytics_storage: 'denied', ad_storage: 'denied' });
         gtag('js', new Date());
         gtag('config', 'G-WMKM4C2Q8J');
     </script>
@@ -141,9 +143,12 @@
         <div class="container">
             <div class="header-content header-content--home">
                 <img src="logo.png" alt="SheetBuilder" class="header-brand-image" onerror="this.style.display='none'">
-                <a href="builder.html" class="header-launch-btn">
-                    <i class="fa-solid fa-bullseye"></i> Open Builder
-                </a>
+                <div class="header-home-nav">
+                    <a href="#pricing" class="header-pricing-btn">Pricing</a>
+                    <a href="builder.html" class="header-launch-btn">
+                        <i class="fa-solid fa-bullseye"></i> Open Builder
+                    </a>
+                </div>
             </div>
         </div>
     </header>
@@ -151,7 +156,7 @@
     <div class="container">
         <main>
             <section class="hero-section">
-                <h1 class="hero-title">Free Auto-Pack Sheet Layout Builder</h1>
+                <h1 class="hero-title">Auto-Pack Sheet Layout Builder</h1>
                 <p class="hero-subtitle">For DTF gang sheets, print-and-play cards, sticker sheets &amp; more</p>
                 <p class="hero-desc">Upload your images, set sizes and copy counts, and SheetBuilder <strong>automatically packs everything onto a print-ready sheet</strong> with zero wasted space. <strong>No account, no uploads, no cost.</strong> Works for any sheet-based print job.</p>
                 <div class="hero-cta-row">
@@ -238,6 +243,36 @@
                 </details>
             </section>
 
+            <section id="pricing" class="pricing-section">
+                <h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-tag"></i></span>Pricing</h2>
+                <div class="pricing-tiers">
+                    <div class="pricing-tier">
+                        <div class="pricing-tier-name">Personal</div>
+                        <div class="pricing-tier-price">Free</div>
+                        <ul class="pricing-tier-features">
+                            <li><i class="fa-solid fa-check"></i> Unlimited sheets</li>
+                            <li><i class="fa-solid fa-check"></i> All features included</li>
+                            <li><i class="fa-solid fa-check"></i> No account required</li>
+                            <li><i class="fa-solid fa-check"></i> Runs in your browser</li>
+                        </ul>
+                        <p class="pricing-tier-note">Free for personal &amp; non-commercial use</p>
+                    </div>
+                    <div class="pricing-tier pricing-tier--pro">
+                        <div class="pricing-tier-badge">For Businesses</div>
+                        <div class="pricing-tier-name">Commercial</div>
+                        <div class="pricing-tier-price">$29 <span>one-time</span></div>
+                        <ul class="pricing-tier-features">
+                            <li><i class="fa-solid fa-check"></i> Everything in Personal</li>
+                            <li><i class="fa-solid fa-check"></i> Lifetime license</li>
+                            <li><i class="fa-solid fa-check"></i> Use output commercially</li>
+                            <li><i class="fa-solid fa-check"></i> Legally compliant for business</li>
+                            <li><i class="fa-solid fa-check"></i> Email support</li>
+                        </ul>
+                        <a href="https://buy.stripe.com/9B600j5Rb4jagK25Hjcwg0f" target="_blank" rel="noopener noreferrer" class="pricing-cta-btn">Get Commercial License →</a>
+                    </div>
+                </div>
+            </section>
+
             <section id="faq" class="faq-section">
                 <details class="features-details">
                 <summary><h2><span class="section-icon" aria-hidden="true"><i class="fa-solid fa-circle-question"></i></span>Frequently Asked Questions</h2></summary>
@@ -307,5 +342,15 @@
             </div>
         </footer>
     </div>
+
+    <div id="cookie-consent-banner" class="cookie-banner" hidden>
+        <i class="fa-solid fa-cookie-bite cookie-banner-icon" aria-hidden="true"></i>
+        <p>We use analytics cookies (Google Analytics &amp; Microsoft Clarity) to understand how SheetBuilder is used. Your images & files <strong>never leave your device</strong>, no uploads, no sharing, ever.</p>
+        <div class="cookie-banner-btns">
+            <button id="cookie-accept" type="button" class="cookie-btn-accept">Accept</button>
+            <button id="cookie-decline" type="button" class="cookie-btn-decline">Decline</button>
+        </div>
+    </div>
+    <script src="consent.js"></script>
 </body>
 </html>
