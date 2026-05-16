@@ -2611,7 +2611,10 @@ class SheetBuilder {
             pageDiv.className = 'page-preview';
 
             const aspectRatio = paperWidth / effectivePaperHeight;
-            const containerWidth = Math.min(300, window.innerWidth * 0.25);
+            const isMobile = window.innerWidth < 640;
+            const containerWidth = isMobile
+                ? Math.min(300, window.innerWidth - 72)
+                : Math.min(300, window.innerWidth * 0.25);
             const previewWidth = containerWidth;
             const previewHeight = previewWidth / aspectRatio;
             const scale = previewWidth / paperWidth;

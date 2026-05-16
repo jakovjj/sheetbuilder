@@ -283,6 +283,15 @@ h2 {
     }
 }
 
+@media (max-width: 540px) {
+    .header-home-nav {
+        display: none !important;
+    }
+    .header-content--home {
+        justify-content: center;
+    }
+}
+
 /* Header home link (builder page) */
 .header-home-link {
     display: inline-flex;
@@ -1990,7 +1999,7 @@ h2 {
     .container {
         padding: 10px;
     }
-    
+
     .logo-section {
         position: static !important;
         display: inline-flex;
@@ -2004,7 +2013,7 @@ h2 {
     header.site-header .title-section {
         margin-top: 6px;
     }
-    
+
     .nav-controls {
         position: absolute !important;
         top: 15px;
@@ -2012,15 +2021,15 @@ h2 {
         flex-direction: column;
         gap: 5px;
     }
-    
+
     .title-section {
         margin-top: 20px;
     }
-    
+
     .settings-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .image-config {
         display: flex;
         flex-direction: column;
@@ -2028,21 +2037,28 @@ h2 {
         text-align: left;
         gap: 15px;
     }
-    
+
     .config-inputs {
         grid-template-columns: 1fr 1fr; /* Two columns on mobile */
     }
-    
+
     .config-inputs > div:last-child {
         grid-column: 1 / -1; /* Copies spans full width */
     }
-    
+
     .action-btn {
         display: block;
         width: 100%;
         margin: 10px 0;
     }
-    
+
+    /* Keep modal buttons compact — don't let them go full-width */
+    .info-modal-content .action-btn {
+        display: inline-flex !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+
     .footer-content {
         flex-direction: column;
         text-align: center;
@@ -2781,5 +2797,105 @@ header.site-header,
 @media (max-width: 480px) {
     .pricing-tiers {
         flex-direction: column;
+    }
+}
+
+/* ─── Mobile / small-screen fixes ─── */
+
+/* Builder header: remove excessive top margin that was for a now-removed absolute logo */
+@media (max-width: 640px) {
+    .title-section {
+        margin-top: 4px;
+    }
+}
+
+/* Reduce section padding on mobile */
+@media (max-width: 640px) {
+    .features-section,
+    .pnp-section,
+    .faq-section,
+    .intro-section,
+    .upload-section,
+    .settings-section,
+    .images-section,
+    .actions-section,
+    .preview-section {
+        padding: 20px 16px;
+    }
+
+    .pricing-section {
+        padding: 20px 16px;
+    }
+
+    /* Quick selection: wrap buttons onto new lines on narrow screens */
+    .quick-selection-content {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .quick-selection-label {
+        width: 100%;
+        text-align: center;
+        margin-right: 0;
+    }
+
+    .quick-selection-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Images-window footer: let the 3 action buttons wrap into 2 rows */
+    .footer-actions-row {
+        flex-wrap: wrap;
+    }
+
+    .footer-action-btn {
+        flex: 1 1 calc(50% - 6px);
+        min-width: 0;
+        font-size: 0.8rem;
+        padding: 7px 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Actions control group (Fill Until Pages): stack vertically on mobile */
+    .actions-control-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .actions-control-group > * {
+        width: 100%;
+    }
+
+    .actions-control-group input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Keep modal action buttons compact (override the full-width block rule) */
+    .info-modal-content .action-btn {
+        display: inline-flex !important;
+        width: auto !important;
+        margin: 0 !important;
+    }
+
+    /* Export buttons: allow full width stacking */
+    .preview-export-btns {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .preview-export-btns .action-btn {
+        flex: unset;
+        width: 100%;
+        display: flex !important;
+        justify-content: center;
+        margin: 0 !important;
     }
 }
