@@ -1863,6 +1863,19 @@ class SheetBuilder {
                 }
             }
 
+            // Greedy partial-fill: after finding the maximum complete duplicate sets,
+            // try adding individual images from the roster one at a time to fill
+            // remaining space, so gaps don't go to waste.
+            let partialFill = buildExpanded(bestDuplicateSets);
+            for (const img of requestedImages) {
+                const candidate = [...partialFill, { ...img, isRequired: false, duplicateSetIndex: bestDuplicateSets }];
+                const trialLayout = this.packImagesRespectingSizeGroups(candidate, printableWidth, packingPrintableHeight, innerMargin, allowRotation);
+                if (trialLayout.length <= targetPages) {
+                    partialFill = candidate;
+                    bestLayout = trialLayout;
+                }
+            }
+
             this.layout = bestLayout;
         }
 
