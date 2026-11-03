@@ -25,6 +25,7 @@ class SheetBuilder {
         this.initializeEventListeners();
         this.ensureDefaultPaperSettings();
         this.initializeUnits();
+        this.initializeDpiSettings();
         this.updateImagesWindowState();
     }
 
@@ -213,6 +214,257 @@ class SheetBuilder {
             enabled,
             marginMm: enabled ? safeMargin : 0
         };
+    }
+
+    initializeDpiSettings() {
+        const dpiEl = document.getElementById('sourceDpi');
+        const useFileEl = document.getElementById('useFileDpi');
+        try {
+            const savedDpi = parseFloat(localStorage.getItem('sheetbuilder_source_dpi'));
+            if (dpiEl && Number.isFinite(savedDpi)) dpiEl.value = String(savedDpi);
+            const savedUseFile = localStorage.getItem('sheetbuilder_use_file_dpi');
+            if (useFileEl && savedUseFile !== null) useFileEl.checked = savedUseFile === '1';
+        } catch {
+            // localStorage may be unavailable (private mode); defaults are fine.
+        }
+
+        const save = () => {
+            const { dpi, useFileDpi } = this.getSourceDpiSettings();
+            if (dpiEl) dpiEl.value = String(dpi);
+            try {
+                localStorage.setItem('sheetbuilder_source_dpi', String(dpi));
+                localStorage.setItem('sheetbuilder_use_file_dpi', useFileDpi ? '1' : '0');
+            } catch {
+                // ignore
+            }
+        };
+        if (dpiEl) dpiEl.addEventListener('change', save);
+        if (useFileEl) useFileEl.addEventListener('change', save);
+    }
+
+    getSourceDpiSettings() {
+        const raw = parseFloat(document.getElementById('sourceDpi')?.value);
+        const dpi = Number.isFinite(raw) ? Math.min(2400, Math.max(50, Math.round(raw))) : 300;
+        const useFileEl = document.getElementById('useFileDpi');
+        return { dpi, useFileDpi: useFileEl ? useFileEl.checked : true };
+    }
+
+    // DPI used to turn an image's pixels into a print size.
+    resolveImageDpi(image) {
+        const { dpi, useFileDpi } = this.getSourceDpiSettings();
+        if (useFileDpi && Number.isFinite(image.fileDpi) && image.fileDpi > 0) return image.fileDpi;
+        return dpi;
+    }
+
+    // Largest box (mm) an image can occupy on the current sheet, or null if paper settings are invalid.
+    getMaxImageBoxMm() {
+        const { paperWidth, paperHeight, outerMargin } = this.getPaperSettingsMm();
+        if (this.getPaperSettingsIssue(paperWidth, paperHeight, outerMargin)) return null;
+        const { marginMm: bleedMm } = this.getBleedSettingsMm();
+        const w = paperWidth - (2 * outerMargin) - (2 * bleedMm);
+        const h = this.isInfiniteHeight() ? Infinity : paperHeight - (2 * outerMargin) - (2 * bleedMm);
+        if (!(w > 0) || !(h > 0)) return null;
+        const allowRotation = document.getElementById('rotateImages')?.checked ?? true;
+        return { w, h, allowRotation };
+    }
+
+    // Print size (mm) from pixels ÷ DPI, scaled down proportionally if it can't fit the sheet.
+    computeSizeFromPixels(image) {
+        const pxW = Number(image.originalWidth) || 0;
+        const pxH = Number(image.originalHeight) || 0;
+        if (!(pxW > 0) || !(pxH > 0)) {
+            const ratio = image.aspectRatio > 0 ? image.aspectRatio : 1;
+            return { width: 50, height: 50 / ratio, fitted: false };
+        }
+
+        const dpi = this.resolveImageDpi(image);
+        let width = (pxW / dpi) * 25.4;
+        let height = (pxH / dpi) * 25.4;
+        let fitted = false;
+
+        const box = this.getMaxImageBoxMm();
+        if (box) {
+            const scaleFor = (bw, bh) => Math.min(1, bw / width, bh / height);
+            let scale = scaleFor(box.w, box.h);
+            if (box.allowRotation) scale = Math.max(scale, scaleFor(box.h, box.w));
+            if (scale < 1) {
+                // Tiny safety factor so float rounding never trips the "too large" check.
+                scale *= 0.99999;
+                width *= scale;
+                height *= scale;
+                fitted = true;
+            }
+        }
+        return { width, height, fitted };
+    }
+
+    // DPI the image will actually print at, at its current size (worst axis).
+    getEffectiveDpi(image) {
+        const pxW = Number(image.originalWidth) || 0;
+        const pxH = Number(image.originalHeight) || 0;
+        if (!(pxW > 0) || !(pxH > 0) || !(image.width > 0) || !(image.height > 0)) return null;
+        return Math.min(pxW / (image.width / 25.4), pxH / (image.height / 25.4));
+    }
+
+    updateDpiBadge(image) {
+        const config = document.querySelector(`[data-id="${image.id}"]`);
+        const badge = config?.querySelector('.dpi-badge');
+        if (!badge) return;
+
+        const dpi = this.getEffectiveDpi(image);
+        if (!dpi) {
+            badge.hidden = true;
+            return;
+        }
+        const rounded = Math.round(dpi);
+        badge.hidden = false;
+        badge.textContent = `${rounded} DPI`;
+        badge.classList.toggle('dpi-low', rounded < 150);
+        badge.classList.toggle('dpi-mid', rounded >= 150 && rounded < 200);
+        let hint = '';
+        if (rounded < 150) hint = ' May print blurry: make it smaller or use a higher-resolution file.';
+        else if (rounded < 200) hint = ' Acceptable, but may look soft up close.';
+        badge.title = `${image.originalWidth}×${image.originalHeight} px printed at this size ≈ ${rounded} DPI.${hint}`;
+    }
+
+    flashUploadStatus(text, durationMs = 2500) {
+        this._uploadFeedback.token += 1;
+        const token = this._uploadFeedback.token;
+        if (this._uploadFeedback.hideTimer) window.clearTimeout(this._uploadFeedback.hideTimer);
+        this.setUploadStatus(text, { visible: true });
+        this._uploadFeedback.hideTimer = window.setTimeout(() => {
+            if (this._uploadFeedback.token !== token) return;
+            this.setUploadStatus('', { visible: false });
+        }, durationMs);
+    }
+
+    // Resize selected images (or all, if none are selected) from their pixels and DPI.
+    sizeImagesFromPixels() {
+        if (!this.images || this.images.length === 0) {
+            alert('Please upload some images first!');
+            return;
+        }
+
+        const useSelection = this.selectedImages.size > 0;
+        const targets = useSelection
+            ? this.images.filter(img => this.selectedImages.has(img.id))
+            : this.images;
+
+        let fitted = 0;
+        for (const img of targets) {
+            const size = this.computeSizeFromPixels(img);
+            img.width = size.width;
+            img.height = size.height;
+            if (size.fitted) fitted += 1;
+            this.updateImageConfigDisplay(img);
+            this.validateImageInRealTime(img);
+        }
+
+        this.markLayoutStale();
+
+        const n = targets.length;
+        const scope = useSelection ? `${n} selected image${n === 1 ? '' : 's'}` : `all ${n} image${n === 1 ? '' : 's'}`;
+        const fittedNote = fitted > 0 ? ` ${fitted} scaled down to fit the sheet.` : '';
+        this.flashUploadStatus(`Sized ${scope} from pixels.${fittedNote}`, fitted > 0 ? 4000 : 2500);
+    }
+
+    // Reads the print DPI stored in a PNG (pHYs) or JPEG (JFIF/EXIF) header. Returns null if absent.
+    async readEmbeddedDpi(file) {
+        try {
+            const buf = await file.slice(0, 256 * 1024).arrayBuffer();
+            const view = new DataView(buf);
+            const dpi = this.parsePngDpi(view) ?? this.parseJpegDpi(view);
+            // 72/96 are software defaults that almost never reflect an intended print size.
+            if (!Number.isFinite(dpi) || dpi <= 96 || dpi > 2400) return null;
+            return dpi;
+        } catch {
+            return null;
+        }
+    }
+
+    parsePngDpi(view) {
+        if (view.byteLength < 8 || view.getUint32(0) !== 0x89504E47 || view.getUint32(4) !== 0x0D0A1A0A) return null;
+        let off = 8;
+        while (off + 8 <= view.byteLength) {
+            const len = view.getUint32(off);
+            const type = view.getUint32(off + 4);
+            if (type === 0x70485973) { // pHYs
+                if (len < 9 || off + 17 > view.byteLength) return null;
+                const pixelsPerUnitX = view.getUint32(off + 8);
+                const unit = view.getUint8(off + 16); // 1 = metre
+                return unit === 1 && pixelsPerUnitX > 0 ? Math.round(pixelsPerUnitX * 0.0254) : null;
+            }
+            if (type === 0x49444154 || type === 0x49454E44) return null; // IDAT / IEND: pHYs must come before
+            off += 12 + len;
+        }
+        return null;
+    }
+
+    parseJpegDpi(view) {
+        if (view.byteLength < 4 || view.getUint16(0) !== 0xFFD8) return null;
+        let off = 2;
+        let jfifDpi = null;
+        let exifDpi = null;
+        while (off + 4 <= view.byteLength) {
+            if (view.getUint8(off) !== 0xFF) break;
+            const marker = view.getUint8(off + 1);
+            if (marker === 0xFF) { off += 1; continue; }
+            if (marker === 0xDA || marker === 0xD9) break; // start of scan / end of image
+            const len = view.getUint16(off + 2);
+            if (len < 2) break;
+            const seg = off + 4;
+            const segEnd = Math.min(off + 2 + len, view.byteLength);
+
+            if (marker === 0xE0 && jfifDpi === null && segEnd - seg >= 12
+                && view.getUint32(seg) === 0x4A464946 && view.getUint8(seg + 4) === 0) { // "JFIF\0"
+                const units = view.getUint8(seg + 7);
+                const xDensity = view.getUint16(seg + 8);
+                if (xDensity > 0 && units === 1) jfifDpi = xDensity;
+                else if (xDensity > 0 && units === 2) jfifDpi = Math.round(xDensity * 2.54);
+            } else if (marker === 0xE1 && exifDpi === null && segEnd - seg >= 14
+                && view.getUint32(seg) === 0x45786966 && view.getUint16(seg + 4) === 0) { // "Exif\0\0"
+                exifDpi = this.parseExifDpi(view, seg + 6, segEnd);
+            }
+            off += 2 + len;
+        }
+        // Prefer whichever value looks deliberately set (above the 72/96 defaults).
+        if (jfifDpi > 96) return jfifDpi;
+        if (exifDpi > 96) return exifDpi;
+        return jfifDpi ?? exifDpi;
+    }
+
+    parseExifDpi(view, tiff, end) {
+        if (tiff + 8 > end) return null;
+        const byteOrder = view.getUint16(tiff);
+        const le = byteOrder === 0x4949;
+        if (!le && byteOrder !== 0x4D4D) return null;
+        const u16 = (o) => view.getUint16(o, le);
+        const u32 = (o) => view.getUint32(o, le);
+
+        const ifd = tiff + u32(tiff + 4);
+        if (ifd + 2 > end) return null;
+        const count = u16(ifd);
+        let xRes = null;
+        let unit = 2; // EXIF default: inches
+        for (let i = 0; i < count; i++) {
+            const entry = ifd + 2 + (i * 12);
+            if (entry + 12 > end) break;
+            const tag = u16(entry);
+            if (tag === 0x011A) { // XResolution (RATIONAL)
+                const valueOff = tiff + u32(entry + 8);
+                if (valueOff + 8 <= end) {
+                    const num = u32(valueOff);
+                    const den = u32(valueOff + 4);
+                    if (den > 0) xRes = num / den;
+                }
+            } else if (tag === 0x0128) { // ResolutionUnit
+                unit = u16(entry + 8);
+            }
+        }
+        if (!(xRes > 0)) return null;
+        if (unit === 2) return Math.round(xRes);
+        if (unit === 3) return Math.round(xRes * 2.54);
+        return null;
     }
 
     updateUnitLabels() {
@@ -628,6 +880,8 @@ class SheetBuilder {
         const footerDeleteAllBtn = document.getElementById('footerDeleteAll');
         if (footerSelectAllBtn) footerSelectAllBtn.addEventListener('click', () => this.selectAllImages());
         if (footerDeleteAllBtn) footerDeleteAllBtn.addEventListener('click', () => this.deleteAllImages());
+        const footerSizeFromPixelsBtn = document.getElementById('footerSizeFromPixels');
+        if (footerSizeFromPixelsBtn) footerSizeFromPixelsBtn.addEventListener('click', () => this.sizeImagesFromPixels());
         
         // Bulk input listeners for real-time ratio locking
         if (bulkWidth) bulkWidth.addEventListener('input', (e) => this.handleBulkWidthChange(e));
@@ -879,6 +1133,7 @@ class SheetBuilder {
         config.innerHTML = `
             <div class="image-thumb" title="${imageData.name}">
                 <img src="${imageData.dataUrl}" alt="${imageData.name}">
+                <span class="dpi-badge" hidden></span>
             </div>
             <div class="image-bar">
                 <input data-field="width" type="number" value="${this.formatLengthValue(imageData.width)}" min="1" step="0.1" data-min-mm="1" data-step-mm="0.1"
@@ -898,6 +1153,7 @@ class SheetBuilder {
             </div>
         `;
         list.appendChild(config);
+        this.updateDpiBadge(imageData);
 
         this.syncAllLengthInputsAttributes();
         
@@ -960,6 +1216,7 @@ class SheetBuilder {
                 }
             }
 
+            this.updateDpiBadge(image);
             this.validateImageInRealTime(image);
         }
 
@@ -1364,6 +1621,7 @@ class SheetBuilder {
         if (widthInput) widthInput.value = this.formatLengthValue(imageData.width);
         if (heightInput) heightInput.value = this.formatLengthValue(imageData.height);
         if (copiesInput) copiesInput.value = imageData.copies;
+        this.updateDpiBadge(imageData);
     }
 
     showImageModal(dataUrl, name, dimensions) {
@@ -1456,6 +1714,7 @@ class SheetBuilder {
         const total = imageFiles.length;
         let completed = 0;
         let failed = 0;
+        let fitted = 0;
         const updateStatus = (final = false) => {
             if (this._uploadFeedback.token !== uploadToken) return;
             if (final) {
@@ -1463,6 +1722,10 @@ class SheetBuilder {
                     this.setUploadStatus(`Added ${total - failed}/${total} images (some failed).`, { visible: true });
                 } else {
                     this.setUploadStatus(`Added ${total} image${total === 1 ? '' : 's'}.`, { visible: true });
+                }
+                if (fitted > 0) {
+                    const el = this.getUploadStatusEl();
+                    if (el) el.textContent += ` ${fitted} scaled down to fit the sheet.`;
                 }
                 this._uploadFeedback.hideTimer = window.setTimeout(() => {
                     if (this._uploadFeedback.token !== uploadToken) return;
@@ -1478,32 +1741,39 @@ class SheetBuilder {
         this.markLayoutStale({ resetFillUntilPages: false });
 
         imageFiles.forEach((file, index) => {
+            const dpiPromise = this.readEmbeddedDpi(file);
             const reader = new FileReader();
             reader.onload = (e) => {
                 // Create an image element to get original dimensions
                 const img = new Image();
-                img.onload = () => {
-                    // Calculate aspect ratio and set default size
+                img.onload = async () => {
                     const aspectRatio = img.width / img.height;
-                    const defaultWidth = 50; // default width in mm
-                    const defaultHeight = defaultWidth / aspectRatio;
-                    
+                    const fileDpi = await dpiPromise;
+
                     const imageData = {
                         id: Date.now() + index + Math.random() * 1000,
                         file: file,
                         dataUrl: e.target.result,
                         previewDataUrl: null,
-                        width: defaultWidth,
-                        height: defaultHeight,
+                        width: 0,
+                        height: 0,
                         copies: 1,
                         name: file.name,
                         originalWidth: img.width,
                         originalHeight: img.height,
-                        aspectRatio: aspectRatio
+                        aspectRatio: aspectRatio,
+                        fileDpi: fileDpi
                     };
+
+                    // Start at real print size: pixels ÷ DPI, scaled down if it can't fit the sheet.
+                    const size = this.computeSizeFromPixels(imageData);
+                    imageData.width = size.width;
+                    imageData.height = size.height;
+                    if (size.fitted) fitted += 1;
 
                     this.images.push(imageData);
                     this.renderImageConfig(imageData);
+                    this.validateImageInRealTime(imageData);
                     this.updateImagesWindowState();
 
                     // Keep Fill-until-pages synced to the new minimum requirement.

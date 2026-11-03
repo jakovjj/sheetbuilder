@@ -92,6 +92,9 @@
                                 <button type="button" id="footerSelectAll" class="footer-action-btn">
                                     <i class="fa-solid fa-object-group"></i> Select All
                                 </button>
+                                <button type="button" id="footerSizeFromPixels" class="footer-action-btn" title="Resize selected images (or all, if none are selected) from their pixel size and DPI">
+                                    <i class="fa-solid fa-ruler-combined"></i> Size from Pixels
+                                </button>
                                 <button type="button" id="footerDeleteAll" class="footer-action-btn">
                                     <i class="fa-solid fa-trash"></i> Delete All
                                 </button>
@@ -103,7 +106,7 @@
 
                 <details class="upload-tutorial">
                     <summary>How it works?</summary>
-                    <p>Upload as many images as you want. Each image shows a width and height field you can edit freely. Changing either dimension will automatically adjust the other to keep the original aspect ratio. You can also select multiple images at once, then edit any field to update all selected images at the same time.</p>
+                    <p>Upload as many images as you want. Each image shows a width and height field you can edit freely. Changing either dimension will automatically adjust the other to keep the original aspect ratio. New images start at their print size from their pixels and DPI (set under Print Settings), and each image shows the DPI it will print at: amber or red means it may look blurry. You can also select multiple images at once, then edit any field to update all selected images at the same time.</p>
                 </details>
             </section>
 
@@ -161,6 +164,21 @@
                             <label for="separateByImageSize" class="checkbox-label">Start a new page when image dimensions change</label>
                         </div>
                         <small>Keeps different sizes on separate sheets.</small>
+                    </div>
+
+                    <div class="setting-group">
+                        <label for="sourceDpi">Image Size from Pixels:</label>
+                        <div class="bleed-setting-row">
+                            <div class="bleed-setting-input">
+                                <input type="number" id="sourceDpi" value="300" min="50" max="2400" step="1" inputmode="numeric" aria-label="Default image DPI">
+                                <span class="bleed-setting-suffix">DPI</span>
+                            </div>
+                        </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="useFileDpi" checked>
+                            <label for="useFileDpi" class="checkbox-label">Use DPI saved in the file when available</label>
+                        </div>
+                        <small>New images print at pixels ÷ DPI (e.g. 3000 px at 300 DPI = 10 in). Images too big for the sheet are scaled down to fit.</small>
                     </div>
 
                     <div class="setting-group">

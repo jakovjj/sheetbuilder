@@ -1274,6 +1274,39 @@ h2 {
     overflow: hidden;
 }
 
+/* Effective print DPI on each image tile */
+.image-thumb .dpi-badge {
+    position: absolute;
+    left: 4px;
+    bottom: 4px;
+    padding: 1px 5px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1.5;
+    color: #374151;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    pointer-events: auto;
+    white-space: nowrap;
+}
+
+.dpi-badge[hidden] {
+    display: none;
+}
+
+.dpi-badge.dpi-mid {
+    color: #92400e;
+    background: #fef3c7;
+    border-color: #f59e0b;
+}
+
+.dpi-badge.dpi-low {
+    color: #fff;
+    background: #dc2626;
+    border-color: #b91c1c;
+}
+
 .img-delete-btn {
     padding: 0;
     display: flex;
